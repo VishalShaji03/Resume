@@ -12,8 +12,22 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up LaTeX environment
         uses: xu-cheng/latex-action@v2
         with:
           root_file: resume.tex
+
+      - name: Move PDF to root
+        run: mv resume.pdf ./resume.pdf
+      
+      - name: Push PDF to pdf-output branch
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Update resume PDF
+          branch: pdf-output
+          file_pattern: resume.pdf
+          author_name: github-actions
+          author_email:
