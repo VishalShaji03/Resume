@@ -1,44 +1,36 @@
 name: Build Resume into pdf and docx
-
 on:
   push:
     branches:
       - main
-
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    # Workflow Steps
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-
-      # 1. Generate the PDF (Existing Step)
+      # 1. Generate the PDF
       - name: Set up LaTeX environment
         uses: xu-cheng/latex-action@v2
         with:
           root_file: resume.tex
-
-      # 2. Install Pandoc (New Step)
+      # 2. Install Pandoc
       - name: Install Pandoc
         run: sudo apt-get update && sudo apt-get install -y pandoc
-
-      # 3. Convert LaTeX to Word (New Step)
+      # 3. Convert LaTeX to Word
       - name: Convert to Word (.docx)
         run: pandoc resume.tex -o resume.docx
-
-      # 4. Push both files (Updated Step)
+      # 4. Push both files
       - name: Push PDF and Docx to pdf-output branch
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: Update resume PDF and DOCX
           branch: pdf-output
-          # Added resume.docx to the file pattern
           file_pattern: resume.pdf resume.docx
           create_branch: true
           commit_user_name: github-actions[bot]
