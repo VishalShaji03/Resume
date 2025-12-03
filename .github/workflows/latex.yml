@@ -1,4 +1,4 @@
-name: Build Resume into pdf and docx
+name: Build Resume into PDF and DOCX
 on:
   push:
     branches:
@@ -17,19 +17,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 1. Generate the PDF
-      - name: Set up LaTeX environment
+      # 1. Generate the PDF from LaTeX
+      - name: Build PDF with LaTeX
         uses: xu-cheng/latex-action@v2
         with:
           root_file: resume.tex
 
-      # 2. Install Pandoc
-      - name: Install Pandoc
-        run: sudo apt-get update && sudo apt-get install -y pandoc
+      # 2. Install LibreOffice (for PDF → DOCX)
+      - name: Install LibreOffice
+        run: sudo apt-get update && sudo apt-get install -y libreoffice
 
-      # 3. Convert PDF → DOCX (instead of TEX → DOCX)
-      - name: Convert PDF to Word (.docx)
-        run: pandoc resume.pdf -o resume.docx
+      # 3. Convert PDF → DOCX
+      - name: Convert PDF to DOCX
+        run: libreoffice --headless --convert-to docx resume.pdf
+
+      # LibreOffice outputs file as resume.docx in current directory
 
       # 4. Push both files to pdf-output branch
       - name: Push PDF and DOCX to pdf-output branch
