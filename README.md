@@ -1,86 +1,92 @@
-# 📄 Version-Controlled LaTeX Resume (with Automatic PDF Conversion)
+# 📄 AI-Powered LaTeX Resume Pipeline
 
-Yes — it really does what it says.
-
-I built this repository to version-control my résumé and automatically generate a fresh PDF every time I push changes, thanks to GitHub Actions.  
-I used to edit my LaTeX file, compile it manually, and *only then* notice formatting issues or typos. Since I tweak my résumé often, I figured… why not automate the boring part?
-
-So this repo exists to fix exactly that — and you can clone it to automate your workflow too.
+A **forkable**, version-controlled LaTeX résumé with automatic PDF generation and an optional **AI-powered serverless editor**.
 
 ---
 
-## 🚀 What This Repo Does
+## 🚀 Features
 
-- Stores your LaTeX résumé in version control  
-- Automatically compiles it into a PDF on every push  
-- Uploads the PDF as a downloadable artifact  
-- Saves you from manually running LaTeX for every small update  
-
-If you regularly update your résumé, this setup will make your life much easier.
+- **Version-controlled résumé** – Track every change with Git
+- **Automatic PDF builds** – Push `.tex` changes, get a fresh PDF
+- **Optimized GitHub Actions** – Fast builds with Tectonic + caching
+- **AI-powered editing** *(optional)* – Update your résumé with natural language via AWS Bedrock
 
 ---
 
-## ⚙️ How It Works
+## ⚙️ GitHub Actions Workflow
 
-A GitHub Actions workflow handles the automation:
+The workflow is optimized for speed and cost-efficiency:
 
-1. Checks out the repo  
-2. Compiles the `.tex` file  
-3. Uploads the generated PDF  
-
-All you need to do is push your changes.
-
-### **Workflow Used**
+| Feature | Benefit |
+|---------|---------|
+| **Tectonic compiler** | 10x faster than full TeX Live |
+| **Package caching** | Skip re-downloading on subsequent builds |
+| **Path filtering** | Only runs when `.tex` files change |
+| **Concurrency control** | Cancels duplicate runs on rapid pushes |
+| **5-min timeout** | Prevents runaway jobs |
 
 ```yaml
-name: Build Resume PDF
-
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+    paths: ['**.tex']  # Only trigger on .tex changes
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+```
 
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Compile LaTeX
-        uses: xu-cheng/latex-action@v3
-        with:
-          root_file: resume.tex
-
-      - name: Upload PDF
-        uses: actions/upload-artifact@v3
-        with:
-          name: resume-pdf
-          path: resume.pdf
-````
+PDF output is pushed to a separate `pdf-output` branch.
 
 ---
 
-## 🧪 Local Compilation (Optional)
+## 🤖 AI Resume Editor (Optional)
 
-If you prefer compiling the PDF yourself:
+An AWS serverless pipeline that lets you update your résumé with natural language:
+
+> *"Add Python to my skills section"* → AI generates patches → commits to GitHub → triggers PDF rebuild
+
+### Architecture
+- **AWS Lambda** – Fetch, generate patches, commit
+- **Amazon Bedrock** – LLM for intelligent diff generation
+- **AWS Step Functions** – Orchestrates the pipeline
+- **GitHub API** – Reads/writes `resume.tex` (only this file)
+
+### Security
+- LLM access is **restricted to `resume.tex`** only
+- Credentials stored via SAM parameters (NoEcho)
+- Patch-based editing – no arbitrary file operations
+
+### Deploy
+```bash
+sam deploy --parameter-overrides \
+  GitHubToken=ghp_xxxx \
+  GitHubRepo=username/repo
+```
+
+---
+
+## 🧪 Local Compilation
 
 ```bash
+# Using Tectonic (recommended)
+tectonic resume.tex
+
+# Or traditional LaTeX
 latexmk -pdf resume.tex
 ```
 
-Or upload the `.tex` file to Overleaf for automatic compilation.
-
 ---
 
-## 📝 What’s Next?
+## 🤝 Fork & Customize
 
-I'm working on automating a **Word (.docx) version** of the résumé as well.
-This requires more than just a workflow job, but it’s something I plan to add.
+1. Fork this repo
+2. Replace `resume.tex` with your content
+3. Push to `main` – PDF auto-generates!
 
----
-
-## 🤝 Feel Free to Use This
-
-Clone it, customize it, or use it as the base for your own automated résumé setup.
-If you have ideas to improve it, PRs are always welcome!
+PRs and ideas welcome!
