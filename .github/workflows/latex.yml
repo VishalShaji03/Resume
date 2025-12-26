@@ -5,7 +5,8 @@ on:
     branches:
       - main
     paths:
-      - '**.tex'  # Only run when .tex files change
+      - '**.tex'
+      - '.github/workflows/latex.yml'
 
 permissions:
   contents: write
