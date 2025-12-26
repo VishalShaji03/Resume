@@ -18,7 +18,11 @@ jobs:
         with:
           fetch-depth: 1
 
-      # 1. Setup Tectonic (Faster LaTeX Compiler)
+      # 1. Install FUSE (Required for Tectonic AppImage)
+      - name: Install libfuse2
+        run: sudo apt-get install -y libfuse2
+
+      # 2. Setup Tectonic (Faster LaTeX Compiler)
       - name: Setup Tectonic
         uses: wtfjoke/setup-tectonic@v1
         with:
