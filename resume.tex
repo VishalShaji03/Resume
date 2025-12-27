@@ -1,14 +1,23 @@
-% ================================
-% RECRUITER OPTIMIZED ONE-PAGE RESUME
-% ================================
+% A complete, runnable LaTeX document for your resume
+% ONE PAGE – spacing optimized, ATS safe
 
+% --- PREAMBLE ---
 \documentclass[10pt, a4paper, sans]{moderncv}
-
 \moderncvstyle{banking}
 \moderncvcolor{blue}
 
+% --- GEOMETRY (SAFE LIMITS) ---
 \usepackage[a4paper, top=1.5cm, bottom=1.5cm, left=1.8cm, right=1.8cm]{geometry}
 
+% --- GLOBAL SPACING FIXES ---
+\AtBeginDocument{
+  \setlength{\parskip}{0pt}
+  \setlength{\itemsep}{1.5pt}
+  \setlength{\parsep}{0pt}
+  \setlength{\topsep}{2pt}
+}
+
+% --- PERSONAL INFORMATION ---
 \name{Vishal}{Shaji}
 \title{Cloud \& DevOps Engineer}
 \address{Kochi, India}{}
@@ -17,109 +26,130 @@
 \social[linkedin]{VishalShaji}
 \social[github]{Vishhh03}
 
+% --- DOCUMENT ---
 \begin{document}
 
 \hypersetup{
-  colorlinks=true,
-  urlcolor=blue
+    colorlinks=true,
+    urlcolor=blue,
+    pdftitle={Vishal Shaji - Resume}
 }
 
 \makecvtitle
-\vspace*{-10mm}
+\vspace*{-8mm} % pull content up safely
 
-% ---- Tighter spacing ----
-\AtBeginDocument{
-  \setlength{\parskip}{0pt}
-  \setlength{\itemsep}{1pt}
-  \setlength{\parsep}{0pt}
-  \setlength{\topsep}{2pt}
-}
-
-% ================================
+% ==========================
 \section{Experience}
 
 \cventry
-{2025 -- Present}
+{July 2025 -- Present}
 {Programmer Analyst Trainee}
-{Cognizant}
-{Chennai}
+{Cognizant Technology Solutions (CTS)}
+{Chennai, India}
 {}
 {
-\begin{itemize}\setlength{\itemsep}{1pt}
-\item Led a 5-member team delivering a full-stack Angular + .NET platform.
-\item Implemented Dockerized CI/CD pipelines using GitHub Actions.
-\item Deployed Prometheus, Grafana, and ELK for production monitoring.
+Led a 5-member team developing and modernizing a full-stack platform with DevOps practices.
+\begin{itemize}\setlength{\itemsep}{1.5pt}
+  \item Developed Smart Hotel Management System using Angular, .NET, and SQL Server.
+  \item Performed pull request reviews and managed Git-based version control.
+  \item Containerized the application and implemented CI/CD using GitHub Actions.
+  \item Integrated Prometheus, Grafana, and ELK Stack for monitoring and logging.
 \end{itemize}
 }
 
 \vspace{1mm}
 
 \cventry
-{2025}
-{Tech Consultant Intern}
+{Jan 2025 -- June 2025}
+{Tech Consultant (Intern)}
 {Bommaku Constructions}
-{Hyderabad}
+{Hyderabad, India}
 {}
 {
-\begin{itemize}\setlength{\itemsep}{1pt}
-\item Improved web performance and UX; delivered Unreal Engine 5 visualizations.
-\item Guided leadership on cloud adoption strategy.
+Supported digital transformation through web, cloud, and visualization solutions.
+\begin{itemize}\setlength{\itemsep}{1.5pt}
+  \item Optimized website performance and provided UI/UX improvement recommendations.
+  \item Designed Unreal Engine 5 architectural visualizations for construction projects.
+  \item Guided management on adopting cloud technologies for operational efficiency.
 \end{itemize}
 }
 
-% ================================
+% ==========================
 \section{Projects}
 
 \cventry
 {}
-{TerraLess -- Stateless Server Hosting}
-{}
+{Cloud DevOps Live Project}
+{TerraLess – Stateless Server Hosting}
 {}
 {}
 {
-\begin{itemize}\setlength{\itemsep}{1pt}
-\item Built a stateless game server platform cutting hosting costs by 90\%.
-\item Designed Btrfs snapshot-based persistence with NVMe + offsite backups.
-\item Automated lifecycle workflows using Bash and cloud APIs.
+Production-grade on-demand game server hosting platform reducing costs by 90\%.
+\begin{itemize}\setlength{\itemsep}{1.5pt}
+  \item Architected stateless compute using Hetzner Cloud with Btrfs snapshots.
+  \item Built Next.js frontend with AWS Cognito authentication and cost transparency.
+  \item Automated lifecycle workflows using Bash and cloud APIs.
+  \item Integrated NVMe with Storage Box for atomic offsite backups and long-term retention.
 \end{itemize}
-\textit{\url{https://www.terraless.com}}
+\textit{Live: \url{https://www.terraless.com}}
 }
 
 \vspace{1mm}
 
 \cventry
 {}
-{Idha Art Stay Website}
-{}
+{Client Website Deployment (Next.js + Sanity CMS)}
+{Idha Art Stay}
 {}
 {}
 {
-\begin{itemize}\setlength{\itemsep}{1pt}
-\item Deployed Next.js + Sanity CMS site with Cloudflare CDN and CI/CD.
+Deployed a production-grade client website with automated CI/CD pipelines.
+\begin{itemize}\setlength{\itemsep}{1.5pt}
+  \item Built responsive Next.js frontend with Sanity CMS.
+  \item Deployed via GitHub Actions with Cloudflare CDN and SEO optimization.
 \end{itemize}
-\textit{\url{https://www.idhafortkochi.com}}
+\textit{Live: \url{https://www.idhafortkochi.com}}
 }
 
-% ================================
+% ==========================
 \section{Education}
 
 \cventry
 {2019 -- 2023}
-{B.Tech Civil Engineering (ML Minor)}
+{B.Tech – Civil Engineering (Minor in Machine Learning)}
 {TOCH Institute of Science and Technology}
-{Kochi}
+{Kochi, India}
+{}
+{
+\begin{itemize}\setlength{\itemsep}{1.5pt}
+  \item Final year project on Kochi Metro Network analysis using Machine Learning.
+\end{itemize}
+}
+
+\cventry
+{2017 -- 2019}
+{Higher Secondary Education}
+{Gregorian Public School}
+{Kochi, India}
 {}
 {}
 
-% ================================
-\section{Skills}
+% ==========================
+\section{Technical Skills}
 
-\cvitem{}{AWS (EC2, Lambda, IAM, S3, ECS), Docker, Kubernetes, Terraform, GitHub Actions}
-\cvitem{}{Python, JavaScript, C\#, SQL, Linux, Next.js, Angular, .NET}
+\cvitem{DevOps \& Cloud}{AWS (EC2, Lambda, IAM, S3, CloudWatch, ECS, SNS, Cognito), Docker, Kubernetes, Jenkins, Terraform, GitHub Actions, Prometheus, Grafana, ELK Stack, Bash, Git}
+\cvitem{Programming}{Python, JavaScript, C\#, SQL}
+\cvitem{Web}{Angular, .NET Core, Next.js, React, FastAPI, Headless CMS, Cloudflare}
+\cvitem{Databases}{PostgreSQL, SQL Server, DynamoDB, MongoDB, RDS}
+\cvitem{OS}{Linux (Ubuntu, Amazon Linux)}
 
-% ================================
+% ==========================
 \section{Certifications}
 
-\cvitem{}{AWS Cloud Practitioner \quad AWS AI Practitioner \quad OCI Associate Architect}
+\cvitem{}{AWS Certified Cloud Practitioner}
+\cvitem{}{AWS Certified AI Practitioner}
+\cvitem{}{OCI Foundational Associate}
+\cvitem{}{OCI Foundational AI}
+\cvitem{}{OCI Associate Architect}
 
 \end{document}
