@@ -1,144 +1,3 @@
-% A complete, runnable LaTeX document for your resume
-% ONE PAGE – spacing optimized, ATS safe
-
-% --- PREAMBLE ---
-\documentclass[10pt, a4paper, sans]{moderncv}
-\moderncvstyle{banking}
-\moderncvcolor{blue}
-
-% --- GEOMETRY (SAFE LIMITS) ---
-\usepackage[a4paper, top=1.5cm, bottom=1.5cm, left=1.8cm, right=1.8cm]{geometry}
-
-% --- GLOBAL SPACING FIXES ---
-\AtBeginDocument{
-  \setlength{\parskip}{0pt}
-  \setlength{\itemsep}{1.5pt}
-  \setlength{\parsep}{0pt}
-  \setlength{\topsep}{2pt}
-}
-
-% --- PERSONAL INFORMATION ---
-\name{Vishal}{Shaji}
-\title{Cloud \& DevOps Engineer}
-\address{Kochi, India}{}
-\phone[mobile]{+91 7306997081}
-\email{vishshaji03@gmail.com}
-\social[linkedin]{VishalShaji}
-\social[github]{Vishhh03}
-
-% --- DOCUMENT ---
-\begin{document}
-
-\hypersetup{
-    colorlinks=true,
-    urlcolor=blue,
-    pdftitle={Vishal Shaji - Resume}
-}
-
-\makecvtitle
-\vspace*{-8mm} % pull content up safely
-
-% ==========================
-\section{Experience}
-
-\cventry
-{July 2025 -- Present}
-{Programmer Analyst Trainee}
-{Cognizant Technology Solutions (CTS)}
-{Chennai, India}
-{}
-{
-\begin{itemize}\setlength{\itemsep}{1.5pt}
-  \item Led a 5-member team developing a Smart Hotel Management System (Angular, .NET, SQL Server).
-  \item Containerized the application using Docker and built GitHub Actions CI/CD pipelines.
-  \item Integrated Prometheus, Grafana, and ELK Stack for live monitoring and log management.
-  \item Performed primary pull request reviews and maintained Git-based version control.
-\end{itemize}
-}
-
-\vspace{1mm}
-
-\cventry
-{Jan 2025 -- June 2025}
-{Tech Consultant (Intern)}
-{Bommaku Constructions}
-{Hyderabad, India}
-{}
-{
-\begin{itemize}\setlength{\itemsep}{1.5pt}
-  \item Supported digital transformation through web, cloud, and visualization solutions.
-  \item Optimized website performance and provided UI/UX improvement recommendations.
-  \item Designed Unreal Engine 5 architectural visualizations for construction projects.
-  \item Guided management on adopting cloud technologies for operational efficiency.
-\end{itemize}
-}
-
-% ==========================
-\section{Projects}
-
-\cventry
-{}
-{Cloud DevOps Live Project}
-{TerraLess – Stateless Server Hosting}
-{}
-{}
-{
-\begin{itemize}\setlength{\itemsep}{1.5pt}
-  \item Production-grade on-demand game server hosting platform reducing costs by 90\%.
-  \item Architected stateless compute using Hetzner Cloud with Btrfs snapshots.
-  \item Built Next.js frontend with AWS Cognito authentication and cost transparency.
-  \item Automated lifecycle workflows using Bash and cloud APIs.
-  \item Integrated NVMe with Storage Box for atomic offsite backups and long-term retention.
-\end{itemize}
-\textit{Live: \url{https://www.terraless.com}}
-}
-
-\vspace{1mm}
-
-\cventry
-{}
-{Client Website Deployment (Next.js + Sanity CMS)}
-{Idha Art Stay}
-{}
-{}
-{
-\begin{itemize}\setlength{\itemsep}{1.5pt}
-  \item Deployed a production-grade client website with automated CI/CD pipelines.
-  \item Built responsive Next.js frontend with Sanity CMS.
-  \item Deployed via GitHub Actions with Cloudflare CDN and SEO optimization.
-\end{itemize}
-\textit{Live: \url{https://www.idhafortkochi.com}}
-}
-
-
-% A complete, runnable LaTeX document for your resume
-% This uses the moderncv class to create a clean, one-page layout.
-
-% --- PREAMBLE ---
-\documentclass[10pt, a4paper, sans]{moderncv} % Set base font size to 10pt
-\moderncvstyle{banking} % 'banking' theme
-\moderncvcolor{blue}    % You can change this to 'green', 'orange', 'red', etc.
-
-% --- GEOMETRY ---
-% Reduced margins to fit content on one page
-\usepackage[a4paper, top=1.5cm, bottom=1.5cm, left=1.8cm, right=1.8cm]{geometry} 
-
-
-% --- PERSONAL INFORMATION ---
-\name{Vishal}{Shaji}
-\title{Cloud \& DevOps} 
-
-% CHANGE 1: Added \vspace{2.5mm} here to push the address down away from the Title
-\address{\vspace{2.5mm}Kochi, India}{} 
-\phone[mobile]{+91 7306997081}
-\email{vishshaji03@gmail.com}
-
-% Social links
-\social[linkedin]{VishalShaji}
-\social[github]{Vishhh03}
-
-
-
 % --- THE DOCUMENT BEGINS ---
 \begin{document}
 
@@ -183,11 +42,11 @@
   {Bommaku Constructions} % Company
   {Hyderabad, India} % Location
   {} % Grade/Score (empty)
-  {Supported the company's digital transformation and modernization through web, cloud, and visualization solutions.
+  {
   \begin{itemize}%
-    \item Optimized website performance and provided UI/UX enhancement suggestions.
     \item Designed Unreal Engine 5 architectural visualization for construction projects.
-    \item Guided the management team on adopting cloud technologies for operational efficiency.
+    \item Guided the management team on adopting cloud technologies for real-time architecture visualization.
+    \item Optimized website SEO and provided UI/UX enhancement suggestions.
   \end{itemize}}
 % --- Projects ---
 \section{Projects}
@@ -200,11 +59,10 @@
   {} % Grade/Score (empty)
   {
   \begin{itemize}%
-    \item Production-grade on-demand game server hosting platform reducing costs by 90\%.
-    \item Architected stateless compute using Hetzner Cloud with Btrfs snapshots.
-    \item Built Next.js frontend with AWS Cognito authentication and cost transparency.
-    \item Automated lifecycle workflows using Bash and cloud APIs.
-    \item Integrated NVMe with Storage Box for atomic offsite backups and long-term retention.
+      \item Built a \textbf{SaaS Platform} for self-hosted gaming servers on \textbf{Hetzner Cloud}, reducing infrastructure costs by \textbf{90\%}.
+      \item Engineered ephemeral storage to be as reliable as persistent disks, achieving \textbf{<0.1s} freeze times for backups and \textbf{zero I/O latency}.
+      \item Optimized disaster recovery workflows to achieve a sub-minute \textbf{RTO (Recovery Time Objective) of <60s}.
+      \item Achieved \textbf{100\% data redundancy} and high availability by integrating offsite replication with \textbf{Hetzner Storage Box}.
   \end{itemize}
   \textit{Live Site: \url{www.terraless.com}}}
 
