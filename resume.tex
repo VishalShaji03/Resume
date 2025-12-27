@@ -1,5 +1,5 @@
 % ================================
-% ATS OPTIMIZED ONE-PAGE RESUME
+% RECRUITER OPTIMIZED ONE-PAGE RESUME
 % ================================
 
 \documentclass[10pt, a4paper, sans]{moderncv}
@@ -7,10 +7,8 @@
 \moderncvstyle{banking}
 \moderncvcolor{blue}
 
-% ---- Geometry (SAFE ATS LIMITS) ----
 \usepackage[a4paper, top=1.5cm, bottom=1.5cm, left=1.8cm, right=1.8cm]{geometry}
 
-% ---- Personal Info ----
 \name{Vishal}{Shaji}
 \title{Cloud \& DevOps Engineer}
 \address{Kochi, India}{}
@@ -27,49 +25,45 @@
 }
 
 \makecvtitle
-\vspace*{-6mm}
+\vspace*{-10mm}
 
-% ---- Global ATS spacing ----
+% ---- Tighter spacing ----
 \AtBeginDocument{
   \setlength{\parskip}{0pt}
-  \setlength{\itemsep}{2pt}
+  \setlength{\itemsep}{1pt}
   \setlength{\parsep}{0pt}
-  \setlength{\topsep}{3pt}
+  \setlength{\topsep}{2pt}
 }
 
 % ================================
 \section{Experience}
 
 \cventry
-{July 2025 -- Present}
+{2025 -- Present}
 {Programmer Analyst Trainee}
-{Cognizant Technology Solutions}
-{Chennai, India}
+{Cognizant}
+{Chennai}
 {}
 {
-\begin{itemize}\setlength{\itemsep}{2pt}
-\item Led a 5-member team developing and modernizing a full-stack web platform.
-\item Built Smart Hotel Management System using Angular, .NET Core, and SQL Server.
-\item Performed pull request reviews and managed Git-based version control.
-\item Containerized applications using Docker and implemented CI/CD with GitHub Actions.
-\item Implemented monitoring with Prometheus and Grafana and log management using ELK Stack.
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item Led a 5-member team delivering a full-stack Angular + .NET platform.
+\item Implemented Dockerized CI/CD pipelines using GitHub Actions.
+\item Deployed Prometheus, Grafana, and ELK for production monitoring.
 \end{itemize}
 }
 
 \vspace{1mm}
 
 \cventry
-{Jan 2025 -- June 2025}
-{Tech Consultant (Intern)}
+{2025}
+{Tech Consultant Intern}
 {Bommaku Constructions}
-{Hyderabad, India}
+{Hyderabad}
 {}
 {
-\begin{itemize}\setlength{\itemsep}{2pt}
-\item Supported digital transformation initiatives using web and cloud technologies.
-\item Improved website performance and provided UI/UX optimization recommendations.
-\item Designed Unreal Engine 5 architectural visualizations for construction projects.
-\item Advised management on cloud adoption for operational efficiency.
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item Improved web performance and UX; delivered Unreal Engine 5 visualizations.
+\item Guided leadership on cloud adoption strategy.
 \end{itemize}
 }
 
@@ -78,36 +72,32 @@
 
 \cventry
 {}
-{Cloud DevOps Live Project}
 {TerraLess -- Stateless Server Hosting}
 {}
 {}
+{}
 {
-\begin{itemize}\setlength{\itemsep}{2pt}
-\item Built a production-grade on-demand game server hosting platform reducing costs by 90\%.
-\item Architected stateless compute using Hetzner Cloud and Btrfs snapshots.
-\item Automated server lifecycle using Bash and cloud APIs.
-\item Integrated NVMe storage with offsite Storage Box backups.
-\item Developed Next.js frontend with AWS Cognito authentication.
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item Built a stateless game server platform cutting hosting costs by 90\%.
+\item Designed Btrfs snapshot-based persistence with NVMe + offsite backups.
+\item Automated lifecycle workflows using Bash and cloud APIs.
 \end{itemize}
-\textit{Live: \url{https://www.terraless.com}}
+\textit{\url{https://www.terraless.com}}
 }
 
 \vspace{1mm}
 
 \cventry
 {}
-{Client Website Deployment}
-{Idha Art Stay}
+{Idha Art Stay Website}
+{}
 {}
 {}
 {
-\begin{itemize}\setlength{\itemsep}{2pt}
-\item Built and deployed a Next.js website with Sanity CMS integration.
-\item Implemented CI/CD using GitHub Actions and deployed to Cloudflare.
-\item Configured CDN, DNS, and SEO optimizations.
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item Deployed Next.js + Sanity CMS site with Cloudflare CDN and CI/CD.
 \end{itemize}
-\textit{Live: \url{https://www.idhafortkochi.com}}
+\textit{\url{https://www.idhafortkochi.com}}
 }
 
 % ================================
@@ -115,40 +105,21 @@
 
 \cventry
 {2019 -- 2023}
-{B.Tech in Civil Engineering (Minor in Machine Learning)}
+{B.Tech Civil Engineering (ML Minor)}
 {TOCH Institute of Science and Technology}
-{Kochi, India}
-{}
-{
-\begin{itemize}\setlength{\itemsep}{2pt}
-\item Final year project on Kochi Metro Network Analysis using Machine Learning.
-\end{itemize}
-}
-
-\cventry
-{2017 -- 2019}
-{Higher Secondary Education}
-{Gregorian Public School}
-{Kochi, India}
+{Kochi}
 {}
 {}
 
 % ================================
-\section{Technical Skills}
+\section{Skills}
 
-\cvitem{Cloud \& DevOps}{AWS EC2, AWS Lambda, AWS IAM, AWS S3, AWS ECS, AWS CloudWatch, Docker, Kubernetes, Jenkins, Terraform, GitHub Actions, Prometheus, Grafana, ELK Stack}
-\cvitem{Programming}{Python, JavaScript, C\#, SQL}
-\cvitem{Web}{Angular, .NET Core, Next.js, React, FastAPI, Cloudflare}
-\cvitem{Databases}{PostgreSQL, SQL Server, DynamoDB, MongoDB, RDS}
-\cvitem{OS}{Linux (Ubuntu, Amazon Linux)}
+\cvitem{}{AWS (EC2, Lambda, IAM, S3, ECS), Docker, Kubernetes, Terraform, GitHub Actions}
+\cvitem{}{Python, JavaScript, C\#, SQL, Linux, Next.js, Angular, .NET}
 
 % ================================
 \section{Certifications}
 
-\cvitem{}{AWS Certified Cloud Practitioner}
-\cvitem{}{AWS Certified AI Practitioner}
-\cvitem{}{OCI Foundational Associate}
-\cvitem{}{OCI Foundational AI}
-\cvitem{}{OCI Associate Architect}
+\cvitem{}{AWS Cloud Practitioner \quad AWS AI Practitioner \quad OCI Associate Architect}
 
 \end{document}
