@@ -1,153 +1,154 @@
-% A complete, runnable LaTeX document for your resume
-% This uses the moderncv class to create a clean, one-page layout.
+% ================================
+% ATS OPTIMIZED ONE-PAGE RESUME
+% ================================
 
-% --- PREAMBLE ---
-\documentclass[10pt, a4paper, sans]{moderncv} % Set base font size to 10pt
-\moderncvstyle{banking} % 'banking' theme
-\moderncvcolor{blue}    % You can change this to 'green', 'orange', 'red', etc.
+\documentclass[10pt, a4paper, sans]{moderncv}
 
-% --- GEOMETRY ---
-% Reduced margins to fit content on one page
-\usepackage[a4paper, top=1.5cm, bottom=1.5cm, left=1.8cm, right=1.8cm]{geometry} 
+\moderncvstyle{banking}
+\moderncvcolor{blue}
 
+% ---- Geometry (SAFE ATS LIMITS) ----
+\usepackage[a4paper, top=1.5cm, bottom=1.5cm, left=1.8cm, right=1.8cm]{geometry}
 
-% --- PERSONAL INFORMATION ---
+% ---- Personal Info ----
 \name{Vishal}{Shaji}
-\title{Cloud \& DevOps} 
-
-% CHANGE 1: Added \vspace{2.5mm} here to push the address down away from the Title
-\address{\vspace{2.5mm}Kochi, India}{} 
+\title{Cloud \& DevOps Engineer}
+\address{Kochi, India}{}
 \phone[mobile]{+91 7306997081}
 \email{vishshaji03@gmail.com}
-
-% Social links
 \social[linkedin]{VishalShaji}
 \social[github]{Vishhh03}
 
-
-
-% --- THE DOCUMENT BEGINS ---
 \begin{document}
 
-% Configure hyperref for nice \url{} links
 \hypersetup{
-    colorlinks=true,
-    linkcolor=black,
-    filecolor=black,      
-    urlcolor=blue, % Make URLs blue and clickable
-    pdftitle={Vishal Shaji - Resume},
-    pdfpagemode=FullScreen,
+  colorlinks=true,
+  urlcolor=blue
 }
 
-\makecvtitle % Creates the header with your name and info
+\makecvtitle
+\vspace*{-6mm}
 
-% CHANGE 2: Added negative space here to pull the Experience section UP
-% Adjust -10mm to -5mm or -15mm to change the tightness
-\vspace*{-10mm}
+% ---- Global ATS spacing ----
+\AtBeginDocument{
+  \setlength{\parskip}{0pt}
+  \setlength{\itemsep}{2pt}
+  \setlength{\parsep}{0pt}
+  \setlength{\topsep}{3pt}
+}
 
-% --- Experience ---
+% ================================
 \section{Experience}
 
 \cventry
-  {July 2025 -- Present} % Dates
-  {Programmer Analyst Trainee} % Position
-  {Cognizant Technology Solutions (CTS)} % Company
-  {Chennai, India} % Location
-  {} % Grade/Score (empty)
-  {Led a 5-member team developing and modernizing a full-stack web platform while integrating DevOps practices.
-  \begin{itemize}%
-    \item Developed Smart Hotel Management System (Angular + .NET + SQL Server).
-    \item Performed primary pull request reviews and maintained the remote Git repository.
-    \item Containerized the application using Docker and implemented Github Actions-based CI/CD pipeline.
-    \item Integrated Prometheus \& Grafana for live monitoring and ELK Stack for log management.
-  \end{itemize}}
+{July 2025 -- Present}
+{Programmer Analyst Trainee}
+{Cognizant Technology Solutions}
+{Chennai, India}
+{}
+{
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item Led a 5-member team developing and modernizing a full-stack web platform.
+\item Built Smart Hotel Management System using Angular, .NET Core, and SQL Server.
+\item Performed pull request reviews and managed Git-based version control.
+\item Containerized applications using Docker and implemented CI/CD with GitHub Actions.
+\item Implemented monitoring with Prometheus and Grafana and log management using ELK Stack.
+\end{itemize}
+}
 
-\vspace{2mm} % Added space between job entries
+\vspace{1mm}
 
 \cventry
-  {Jan 2025 -- June 2025} % Dates
-  {Tech Consultant (Intern)} % Position
-  {Bommaku Constructions} % Company
-  {Hyderabad, India} % Location
-  {} % Grade/Score (empty)
-  {Supported the company's digital transformation and modernization through web, cloud, and visualization solutions.
-  \begin{itemize}%
-    \item Optimized website performance and provided UI/UX enhancement suggestions.
-    \item Designed Unreal Engine 5 architectural visualization for construction projects.
-    \item Guided the management team on adopting cloud technologies for operational efficiency.
-  \end{itemize}}
-% --- Projects ---
+{Jan 2025 -- June 2025}
+{Tech Consultant (Intern)}
+{Bommaku Constructions}
+{Hyderabad, India}
+{}
+{
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item Supported digital transformation initiatives using web and cloud technologies.
+\item Improved website performance and provided UI/UX optimization recommendations.
+\item Designed Unreal Engine 5 architectural visualizations for construction projects.
+\item Advised management on cloud adoption for operational efficiency.
+\end{itemize}
+}
+
+% ================================
 \section{Projects}
 
 \cventry
-  {} % Dates (empty)
-  {Cloud DevOps Live Project} % Project Name
-  {TerraLess - Stateless Server Hosting} % Company
-  {} % Location (empty)
-  {} % Grade/Score (empty)
-  {A production-grade platform for on-demand game server hosting, reducing costs by 90\% via ephemeral architecture.
-  \begin{itemize}%
-    \item Architected a "Stateless" computing model using Hetzner Cloud and Btrfs snapshots to decouple data from compute.
-    \item Developed a modern Next.js frontend with AWS Cognito authentication, featuring real-time cost transparency.
-    \item Automated complex lifecycle workflows (Provision $\rightarrow$ Rehydrate $\rightarrow$ Snapshot $\rightarrow$ Destroy) using Bash and Cloud APIs.
-    \item Integrating NVMe storage with Storage Box for instant, atomic offsite backups and 1TB+ data retention.
-  \end{itemize}
-  \textit{Live Site: \url{www.terraless.com}}}
+{}
+{Cloud DevOps Live Project}
+{TerraLess -- Stateless Server Hosting}
+{}
+{}
+{
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item Built a production-grade on-demand game server hosting platform reducing costs by 90\%.
+\item Architected stateless compute using Hetzner Cloud and Btrfs snapshots.
+\item Automated server lifecycle using Bash and cloud APIs.
+\item Integrated NVMe storage with offsite Storage Box backups.
+\item Developed Next.js frontend with AWS Cognito authentication.
+\end{itemize}
+\textit{Live: \url{https://www.terraless.com}}
+}
 
-\vspace{2mm} % Added space between project entries
+\vspace{1mm}
 
 \cventry
-  {} % Dates (empty)
-  {Client Website Deployment (Next.js + Sanity CMS)} % Project Name
-  {Idha Art Stay} % Company
-  {} % Location (empty)
-  {} % Grade/Score (empty)
-  {Deployed a production-grade client website with automated build pipelines and CMS integration.
-  \begin{itemize}%
-    \item Built a responsive Next.js + Sanity CMS frontend for an art homestay business.
-    \item Set up CI/CD pipelines using GitHub Actions for deployment to Cloudflare.
-    \item Configured Cloudflare CDN for performance optimization and SEO improvements.
-  \end{itemize}
-  \textit{Live Site: \url{www.idhafortkochi.com}}}
+{}
+{Client Website Deployment}
+{Idha Art Stay}
+{}
+{}
+{
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item Built and deployed a Next.js website with Sanity CMS integration.
+\item Implemented CI/CD using GitHub Actions and deployed to Cloudflare.
+\item Configured CDN, DNS, and SEO optimizations.
+\end{itemize}
+\textit{Live: \url{https://www.idhafortkochi.com}}
+}
 
-% --- Education ---
+% ================================
 \section{Education}
 
 \cventry
-  {2019 -- 2023} % Dates
-  {Bachelor of Technology (B.Tech) - Civil Engineering (Minor in Machine Learning)} % Degree
-  {TOCH Institute of Science and Technology} % Institution
-  {Kochi, India} % Location
-  {} % Grade
-  {
-  \begin{itemize}%
-    \item Led Machine Learning-based civil data analysis (Kochi Metro Analysis) final year project.
-  \end{itemize}}
+{2019 -- 2023}
+{B.Tech in Civil Engineering (Minor in Machine Learning)}
+{TOCH Institute of Science and Technology}
+{Kochi, India}
+{}
+{
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item Final year project on Kochi Metro Network Analysis using Machine Learning.
+\end{itemize}
+}
 
 \cventry
-  {2017 -- 2019} % Dates
-  {Higher Secondary Education - Computer Science Stream} % Degree
-  {Gregorian Public School} % Institution
-  {Kochi, India} % Location
-  {} % Grade
-  {} % Description
+{2017 -- 2019}
+{Higher Secondary Education}
+{Gregorian Public School}
+{Kochi, India}
+{}
+{}
 
-% --- Technical Skills ---
+% ================================
 \section{Technical Skills}
 
-\cvitem{DevOps \& Cloud}{AWS (EC2, Lambda, IAM, S3, CloudWatch, ECS, SNS, Cognito), Docker, Kubernetes, Jenkins, Terraform, GitHub Actions, Prometheus, Grafana, ELK Stack, Bash Scripting, Git, GitHub}
+\cvitem{Cloud \& DevOps}{AWS EC2, AWS Lambda, AWS IAM, AWS S3, AWS ECS, AWS CloudWatch, Docker, Kubernetes, Jenkins, Terraform, GitHub Actions, Prometheus, Grafana, ELK Stack}
 \cvitem{Programming}{Python, JavaScript, C\#, SQL}
-\cvitem{Web Development}{Angular, .NET Core, Next.js, React, FastAPI, Headless CMS, Cloudflare, DNS Configuration}
+\cvitem{Web}{Angular, .NET Core, Next.js, React, FastAPI, Cloudflare}
 \cvitem{Databases}{PostgreSQL, SQL Server, DynamoDB, MongoDB, RDS}
-\cvitem{Operating Systems}{Linux (Ubuntu, Amazon Linux)}
+\cvitem{OS}{Linux (Ubuntu, Amazon Linux)}
 
-% --- Certificates ---
+% ================================
 \section{Certifications}
 
-\cvitem{2024}{AWS Certified Cloud Practitioner}
+\cvitem{}{AWS Certified Cloud Practitioner}
 \cvitem{}{AWS Certified AI Practitioner}
-\cvitem{}{Oracle Cloud Infrastructure (OCI) Foundational Associate}
-\cvitem{}{Oracle Cloud Infrastructure (OCI) Foundational AI}
-\cvitem{}{Oracle Cloud Infrastructure (OCI) Associate Architect}
+\cvitem{}{OCI Foundational Associate}
+\cvitem{}{OCI Foundational AI}
+\cvitem{}{OCI Associate Architect}
 
 \end{document}
