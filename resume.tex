@@ -1,5 +1,5 @@
 % ================================
-% ONE-PAGE MODERNCV RESUME (FIXED)
+% ONE-PAGE MODERNCV (TECTONIC SAFE)
 % ================================
 
 \documentclass[10pt, a4paper, sans]{moderncv}
@@ -7,26 +7,13 @@
 \moderncvstyle{banking}
 \moderncvcolor{blue}
 
-% ---- Geometry (safe limits) ----
+% ---- Geometry (safe ATS limits) ----
 \usepackage[a4paper, top=1.5cm, bottom=1.5cm, left=1.8cm, right=1.8cm]{geometry}
 
-% ---- REQUIRED FOR PATCHING ----
-\usepackage{etoolbox}
+% ---- Allow flexible page bottoms (IMPORTANT) ----
+\raggedbottom
 
-% ---- FIX MODERNCV FORCED PAGE BREAKS ----
-\patchcmd{\section}
-  {\addvspace{1.5ex}}
-  {\addvspace{0.6ex}}
-  {}
-  {}
-
-\patchcmd{\section}
-  {\penalty -100}
-  {\penalty -10000}
-  {}
-  {}
-
-% ---- GLOBAL SPACING COMPRESSION ----
+% ---- Global spacing control ----
 \AtBeginDocument{
   \setlength{\parskip}{0pt}
   \setlength{\itemsep}{1.5pt}
@@ -36,7 +23,7 @@
 
 \setlength{\cvitemsep}{0.3em}
 
-% ---- PERSONAL INFO ----
+% ---- Personal Info ----
 \name{Vishal}{Shaji}
 \title{Cloud \& DevOps Engineer}
 \address{Kochi, India}{}
@@ -55,7 +42,7 @@
 }
 
 \makecvtitle
-\vspace*{-9mm}
+\vspace*{-8mm}
 
 % ================================
 \section{Experience}
@@ -106,9 +93,9 @@ Supported digital transformation through web, cloud, and visualization solutions
 Production-grade on-demand game server hosting platform reducing costs by 90\%.
 \begin{itemize}\setlength{\itemsep}{1.5pt}
   \item Architected stateless compute using Hetzner Cloud with Btrfs snapshots.
-  \item Built Next.js frontend with AWS Cognito authentication and cost transparency.
+  \item Built Next.js frontend with AWS Cognito authentication.
   \item Automated lifecycle workflows using Bash and cloud APIs.
-  \item Integrated NVMe with Storage Box for atomic offsite backups and long-term retention.
+  \item Integrated NVMe with Storage Box for atomic offsite backups.
 \end{itemize}
 \textit{Live: \url{https://www.terraless.com}}
 }
@@ -122,7 +109,6 @@ Production-grade on-demand game server hosting platform reducing costs by 90\%.
 {}
 {}
 {
-Deployed a production-grade client website with automated CI/CD pipelines.
 \begin{itemize}\setlength{\itemsep}{1.5pt}
   \item Built responsive Next.js frontend with Sanity CMS.
   \item Deployed via GitHub Actions with Cloudflare CDN and SEO optimization.
@@ -164,6 +150,9 @@ Deployed a production-grade client website with automated CI/CD pipelines.
 
 % ================================
 \section{Certifications}
+
+% Force LaTeX to use remaining space on page
+\enlargethispage{2\baselineskip}
 
 \cvitem{}{
 AWS Certified Cloud Practitioner ·
