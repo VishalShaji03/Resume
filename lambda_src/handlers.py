@@ -3,6 +3,7 @@ import os
 from github_client import GitHubClient
 from llm import get_latex_patches
 from patch_manager import apply_patches
+from config import RESUME_FILENAME
 
 def lambda_handler(event, context):
     """
@@ -30,7 +31,7 @@ def fetch_resume(event, context):
         # But let's assume direct payload.
         
         client = GitHubClient()
-        content, sha = client.get_file_content("resume.tex")
+        content, sha = client.get_file_content(RESUME_FILENAME)
         
         return {
             "content": content,
@@ -72,7 +73,7 @@ def commit_update(event, context):
     # Commit
     client = GitHubClient()
     client.update_file(
-        file_path="resume.tex",
+        file_path=RESUME_FILENAME,
         content=new_latex,
         sha=sha,
         message=f"Update resume (AI): {instruction[:30]}..."

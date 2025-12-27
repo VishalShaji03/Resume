@@ -2,6 +2,7 @@ import os
 import requests
 import json
 import base64
+from config import RESUME_FILENAME
 
 class GitHubClient:
     def __init__(self, repo_name=None, token=None):
@@ -17,7 +18,7 @@ class GitHubClient:
             "Accept": "application/vnd.github.v3+json"
         }
 
-    def get_file_content(self, file_path="resume.tex", branch="main"):
+    def get_file_content(self, file_path=RESUME_FILENAME, branch="main"):
         url = f"{self.base_url}/contents/{file_path}?ref={branch}"
         response = requests.get(url, headers=self.headers)
         response.raise_for_status()

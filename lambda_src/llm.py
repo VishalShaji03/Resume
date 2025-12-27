@@ -4,12 +4,12 @@ import os
 
 # Initialize Bedrock client
 try:
-    bedrock = boto3.client(service_name='bedrock-runtime', region_name='us-east-1')
+    bedrock = boto3.client(service_name='bedrock-runtime', region_name=BEDROCK_REGION)
 except Exception as e:
     print(f"Error initializing Bedrock client: {e}")
     bedrock = None
 
-MODEL_ID = "llama-4-scout" 
+
 
 def get_latex_patches(current_latex, user_request):
     """
