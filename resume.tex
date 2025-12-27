@@ -1,19 +1,15 @@
-% ================================
-% ONE-PAGE MODERNCV (TECTONIC SAFE)
-% ================================
+% A complete, runnable LaTeX document for your resume
+% ONE PAGE – spacing optimized, ATS safe
 
+% --- PREAMBLE ---
 \documentclass[10pt, a4paper, sans]{moderncv}
-
 \moderncvstyle{banking}
 \moderncvcolor{blue}
 
-% ---- Geometry (ATS-safe) ----
+% --- GEOMETRY (SAFE LIMITS) ---
 \usepackage[a4paper, top=1.5cm, bottom=1.5cm, left=1.8cm, right=1.8cm]{geometry}
 
-% ---- Allow flexible bottom (prevents forced page break) ----
-\raggedbottom
-
-% ---- Global spacing (safe) ----
+% --- GLOBAL SPACING FIXES ---
 \AtBeginDocument{
   \setlength{\parskip}{0pt}
   \setlength{\itemsep}{1.5pt}
@@ -21,7 +17,7 @@
   \setlength{\topsep}{2pt}
 }
 
-% ---- Personal Info ----
+% --- PERSONAL INFORMATION ---
 \name{Vishal}{Shaji}
 \title{Cloud \& DevOps Engineer}
 \address{Kochi, India}{}
@@ -30,22 +26,19 @@
 \social[linkedin]{VishalShaji}
 \social[github]{Vishhh03}
 
-% ================================
+% --- DOCUMENT ---
 \begin{document}
 
-% ---- NOW cvitemsep EXISTS (IMPORTANT) ----
-\setlength{\cvitemsep}{0.3em}
-
 \hypersetup{
-  colorlinks=true,
-  urlcolor=blue,
-  pdftitle={Vishal Shaji - Resume}
+    colorlinks=true,
+    urlcolor=blue,
+    pdftitle={Vishal Shaji - Resume}
 }
 
 \makecvtitle
-\vspace*{-8mm}
+\vspace*{-8mm} % pull content up safely
 
-% ================================
+% ==========================
 \section{Experience}
 
 \cventry
@@ -59,7 +52,7 @@ Led a 5-member team developing and modernizing a full-stack platform with DevOps
 \begin{itemize}\setlength{\itemsep}{1.5pt}
   \item Developed Smart Hotel Management System using Angular, .NET, and SQL Server.
   \item Performed pull request reviews and managed Git-based version control.
-  \item Containerized applications and implemented CI/CD using GitHub Actions.
+  \item Containerized the application and implemented CI/CD using GitHub Actions.
   \item Integrated Prometheus, Grafana, and ELK Stack for monitoring and logging.
 \end{itemize}
 }
@@ -81,22 +74,22 @@ Supported digital transformation through web, cloud, and visualization solutions
 \end{itemize}
 }
 
-% ================================
+% ==========================
 \section{Projects}
 
 \cventry
 {}
 {Cloud DevOps Live Project}
-{TerraLess -- Stateless Server Hosting}
+{TerraLess – Stateless Server Hosting}
 {}
 {}
 {
 Production-grade on-demand game server hosting platform reducing costs by 90\%.
 \begin{itemize}\setlength{\itemsep}{1.5pt}
   \item Architected stateless compute using Hetzner Cloud with Btrfs snapshots.
-  \item Built Next.js frontend with AWS Cognito authentication.
+  \item Built Next.js frontend with AWS Cognito authentication and cost transparency.
   \item Automated lifecycle workflows using Bash and cloud APIs.
-  \item Integrated NVMe with Storage Box for atomic offsite backups.
+  \item Integrated NVMe with Storage Box for atomic offsite backups and long-term retention.
 \end{itemize}
 \textit{Live: \url{https://www.terraless.com}}
 }
@@ -110,6 +103,7 @@ Production-grade on-demand game server hosting platform reducing costs by 90\%.
 {}
 {}
 {
+Deployed a production-grade client website with automated CI/CD pipelines.
 \begin{itemize}\setlength{\itemsep}{1.5pt}
   \item Built responsive Next.js frontend with Sanity CMS.
   \item Deployed via GitHub Actions with Cloudflare CDN and SEO optimization.
@@ -117,7 +111,7 @@ Production-grade on-demand game server hosting platform reducing costs by 90\%.
 \textit{Live: \url{https://www.idhafortkochi.com}}
 }
 
-% ================================
+% ==========================
 \section{Education}
 
 \cventry
@@ -140,7 +134,7 @@ Production-grade on-demand game server hosting platform reducing costs by 90\%.
 {}
 {}
 
-% ================================
+% ==========================
 \section{Technical Skills}
 
 \cvitem{DevOps \& Cloud}{AWS (EC2, Lambda, IAM, S3, CloudWatch, ECS, SNS, Cognito), Docker, Kubernetes, Jenkins, Terraform, GitHub Actions, Prometheus, Grafana, ELK Stack, Bash, Git}
@@ -149,18 +143,13 @@ Production-grade on-demand game server hosting platform reducing costs by 90\%.
 \cvitem{Databases}{PostgreSQL, SQL Server, DynamoDB, MongoDB, RDS}
 \cvitem{OS}{Linux (Ubuntu, Amazon Linux)}
 
-% ================================
+% ==========================
 \section{Certifications}
 
-% Force usage of remaining space (safe)
-\enlargethispage{2\baselineskip}
-
-\cvitem{}{
-AWS Certified Cloud Practitioner ·
-AWS Certified AI Practitioner ·
-OCI Foundational Associate ·
-OCI Foundational AI ·
-OCI Associate Architect
-}
+\cvitem{}{AWS Certified Cloud Practitioner}
+\cvitem{}{AWS Certified AI Practitioner}
+\cvitem{}{OCI Foundational Associate}
+\cvitem{}{OCI Foundational AI}
+\cvitem{}{OCI Associate Architect}
 
 \end{document}
