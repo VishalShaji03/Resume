@@ -15,14 +15,15 @@
         "current_latex.$": "$.resume_data.content",
         "instruction.$": "$.instruction"
       },
-      "ResultPath": "$.patches",
+      "ResultPath": "$.diff_output",
       "Next": "CommitUpdate"
     },
     "CommitUpdate": {
       "Type": "Task",
       "Resource": "${CommitUpdateFunctionArn}",
       "Parameters": {
-        "patches.$": "$.patches",
+        "patches.$": "$.diff_output.patches",
+        "conversation_id.$": "$.diff_output.conversation_id",
         "current_latex.$": "$.resume_data.content",
         "sha.$": "$.resume_data.sha",
         "instruction.$": "$.instruction"

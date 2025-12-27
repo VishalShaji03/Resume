@@ -77,12 +77,24 @@ Resources:
             - Effect: Allow
               Action: [ "bedrock:InvokeModel" ]
               Resource: "*" # Scope down to specific model ARN if needed
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConversationsTable
 
   CommitUpdateFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: lambda_src/
       Handler: handlers.commit_update
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConversationsTable
+
+  ConversationsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: conversation_id
+        Type: String
 
 Outputs:
   ApiUrl:

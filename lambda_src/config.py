@@ -27,7 +27,8 @@ def load_config():
 _config = load_config()
 
 BEDROCK_REGION = _config.get("bedrock_region")
-MODEL_ID = _config.get("model_id")
+MODEL_ID = _config.get("model_id")# DynamoDB
+DYNAMODB_TABLE_NAME = os.environ.get('DYNAMODB_TABLE_NAME', 'ConversationsTable')
 RESUME_FILENAME = _config.get("resume_filename")
 
 if __name__ == "__main__":

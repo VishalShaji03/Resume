@@ -11,13 +11,20 @@ except Exception as e:
 
 
 
-def get_latex_patches(current_latex, user_request):
+def get_latex_patches(current_latex, user_request, history=[]):
     """
-    Sends the current LaTeX and user request to Llama 4 Scout on Bedrock
-    and returns a list of search/replace patches in JSON format.
+    Sends the current LaTeX, user request, and conversation history to Llama 4 Scout.
+    Returns a list of search/replace patches in JSON format.
     """
     if not bedrock:
         raise Exception("Bedrock client is not initialized.")
+
+    # Format history
+    history_block = ""
+    for msg in history:
+        role = msg.get('role', 'user')
+        content = msg.get('content', '')
+        history_block += f"<|start_header_id|>{role}<|end_header_id|>\n{content}\n<|eot_id|>\n"
 
     prompt = f"""
     <|begin_of_text|><|start_header_id|>system<|end_header_id|>
@@ -34,15 +41,26 @@ def get_latex_patches(current_latex, user_request):
     5. Include enough context in 'search' to ensure it is unique.
     6. Minimum indentation and formatting must be preserved or intentionally updated in 'replace'.
     
+    CAVEATS & COMPATIBILITY:
+    - This project uses the 'Tectonic' engine. AVOID unsupported packages or shell-escape commands.
+    - DO NOT use \\fontspec unless absolutely necessary; Tectonic handles fonts differently.
+    - Be careful with nested list environments inside specialized commands (like \\cventry). Ensure \\begin{{itemize}} is wrapped in braces {{}} if inside a command argument.
+    - DO NOT remove the document preamble or structual commands like \\documentclass.
+    - When rewriting bullets, stick to \\item ... without manual bullet symbols if using moderncv theme defaults, OR use \\textbullet explicitly if requested.
+    
     Example Output:
     [
         {{
-            "search": "\\\\name{Old}{Name}",
-            "replace": "\\\\name{New}{Name}"
+            "search": "\\\\name{{Old}}{{Name}}",
+            "replace": "\\\\name{{New}}{{Name}}"
         }}
     ]
 
-    <|eot_id|><|start_header_id|>user<|end_header_id|>
+    <|eot_id|>
+    
+    {history_block}
+
+    <|start_header_id|>user<|end_header_id|>
     Current LaTeX Resume:
     {current_latex}
     

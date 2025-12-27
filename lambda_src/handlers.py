@@ -4,6 +4,8 @@ from github_client import GitHubClient
 from llm import get_latex_patches
 from patch_manager import apply_patches
 from config import RESUME_FILENAME
+import history_manager
+import uuid
 
 def lambda_handler(event, context):
     """
@@ -45,14 +47,34 @@ def generate_diff(event, context):
     """
     Step 2: Generate patches using Bedrock.
     Input: { "current_latex": "...", "instruction": "..." }
-    Output: { "patches": [...] }
+    Output: { "patches": [...], "conversation_id": "..." }
     """
-    current_latex = event.get('current_latex')
     instruction = event.get('instruction')
+    current_latex = event.get('current_latex')
+    conversation_id = event.get('conversation_id')
     
-    patches = get_latex_patches(current_latex, instruction)
+    if not conversation_id:
+        conversation_id = str(uuid.uuid4())
+        print(f"Generated new conversation_id: {conversation_id}")
+
+    if not instruction or not current_latex:
+        raise ValueError("Missing instruction or current_latex")
+        
+    # Get history
+    history = history_manager.get_history(conversation_id)
+
+    # Get patches from LLM
+    patches = get_latex_patches(current_latex, instruction, history)
     
-    return patches # Return list directly
+    # Save the turn to history
+    # We save THE INSTRUCTION (User) and THE PATCHES (Assistant)
+    # This keeps the history clean with instructions and actions.
+    history_manager.add_turn(conversation_id, instruction, patches)
+
+    return {
+        "patches": patches,
+        "conversation_id": conversation_id
+    }
 
 def commit_update(event, context):
     """
@@ -63,23 +85,26 @@ def commit_update(event, context):
     current_latex = event.get('current_latex')
     sha = event.get('sha')
     instruction = event.get('instruction')
-    
-    # Apply
-    new_latex, success, msg = apply_patches(current_latex, patches)
-    
-    if not success:
-        raise Exception(f"Failed to apply patches: {msg}")
+    conversation_id = event.get('conversation_id')
+
+    if not patches or not current_latex or not sha:
+        raise ValueError("Missing patches, current_latex, or sha")
         
-    # Commit
-    client = GitHubClient()
-    client.update_file(
+    # Apply patches
+    new_latex = apply_patches(current_latex, patches)
+    
+    # Commit to GitHub
+    # Assuming GITHUB_TOKEN and GITHUB_REPO are defined elsewhere or will be added
+    client = GitHubClient(os.environ.get('GITHUB_TOKEN'), os.environ.get('GITHUB_REPO'))
+    new_sha = client.update_file(
         file_path=RESUME_FILENAME,
         content=new_latex,
-        sha=sha,
-        message=f"Update resume (AI): {instruction[:30]}..."
+        commit_message=f"AI Update: {instruction}",
+        sha=sha
     )
     
     return {
         "status": "success",
-        "message": "Resume updated and committed."
+        "new_sha": new_sha,
+        "conversation_id": conversation_id
     }
