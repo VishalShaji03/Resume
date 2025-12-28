@@ -2,24 +2,9 @@
 \moderncvstyle{banking}
 \moderncvcolor{blue}
 
-% --- GEOMETRY (tighter but safe) ---
+% --- GEOMETRY (safe tightening) ---
 \usepackage[a4paper, top=1.3cm, bottom=1.3cm, left=1.6cm, right=1.6cm]{geometry}
-
-% --- SPACING FIXES ---
-\usepackage{setspace}
-\setlength{\hintscolumnwidth}{3cm}
-\setlength{\makecvtitlenamewidth}{10cm}
 \renewcommand{\labelitemi}{\textbullet}
-
-% Reduce space before/after sections
-\usepackage{titlesec}
-\titlespacing*{\section}{0pt}{6pt}{4pt}
-
-% Reduce spacing in cvitem
-\makeatletter
-\renewcommand*{\cvitem}[3][.25em]{%
-  \cvline[#1]{#2}{#3\vspace{-2pt}}}
-\makeatother
 
 % --- PERSONAL INFO ---
 \name{Vishal}{Shaji}
@@ -41,10 +26,6 @@
 \makecvtitle
 \vspace*{-8mm}
 
-% --- SUMMARY (compressed to 1 line) ---
-\section{Summary}
-DevOps / Cloud Engineer with hands-on experience in AWS, Docker, Kubernetes, CI/CD, monitoring, and infrastructure automation.
-
 % --- EXPERIENCE ---
 \section{Experience}
 
@@ -54,13 +35,14 @@ DevOps / Cloud Engineer with hands-on experience in AWS, Docker, Kubernetes, CI/
   {Cognizant Technology Solutions}
   {Chennai, India}
   {}
-  {\vspace{-2mm}
+  {
   \begin{itemize}\setlength{\itemsep}{2pt}
     \item Built and deployed a multi-tier hotel management system using Angular, .NET, and SQL Server.
     \item Containerized services using Docker and implemented CI/CD pipelines with GitHub Actions.
     \item Implemented monitoring and centralized logging using Prometheus, Grafana, and ELK Stack.
     \item Maintained Git workflows and performed pull request reviews.
-  \end{itemize}}
+  \end{itemize}
+  }
 
 \vspace{1mm}
 
@@ -70,11 +52,12 @@ DevOps / Cloud Engineer with hands-on experience in AWS, Docker, Kubernetes, CI/
   {Bommaku Constructions}
   {Hyderabad, India}
   {}
-  {\vspace{-2mm}
+  {
   \begin{itemize}\setlength{\itemsep}{2pt}
     \item Advised management on cloud-based workflows for real-time client demos.
-    \item Built Unreal Engine 5 architectural visualizations for stakeholder presentations.
-  \end{itemize}}
+    \item Designed Unreal Engine 5 architectural visualizations for stakeholder presentations.
+  \end{itemize}
+  }
 
 % --- PROJECTS ---
 \section{Projects}
@@ -85,14 +68,15 @@ DevOps / Cloud Engineer with hands-on experience in AWS, Docker, Kubernetes, CI/
   {TerraLess -- Stateless Server Hosting}
   {}
   {}
-  {\vspace{-2mm}
+  {
   \begin{itemize}\setlength{\itemsep}{2pt}
     \item Built a SaaS platform on Hetzner Cloud using Docker and Linux, reducing costs by 90 percent.
     \item Engineered snapshot-based backups with freeze times under 0.1 seconds.
     \item Designed disaster recovery workflows with recovery time under 60 seconds.
     \item Implemented offsite replication for full data redundancy.
   \end{itemize}
-  \textit{\url{https://www.terraless.com}}}
+  \textit{\url{https://www.terraless.com}}
+  }
 
 \vspace{1mm}
 
@@ -102,11 +86,12 @@ DevOps / Cloud Engineer with hands-on experience in AWS, Docker, Kubernetes, CI/
   {Idha Art Stay}
   {}
   {}
-  {\vspace{-2mm}
+  {
   \begin{itemize}\setlength{\itemsep}{2pt}
     \item Deployed and managed a production website using Next.js, GitHub Actions, and Cloudflare CDN.
   \end{itemize}
-  \textit{\url{https://www.idhafortkochi.com}}}
+  \textit{\url{https://www.idhafortkochi.com}}
+  }
 
 % --- EDUCATION ---
 \section{Education}
@@ -117,10 +102,11 @@ DevOps / Cloud Engineer with hands-on experience in AWS, Docker, Kubernetes, CI/
   {TOCH Institute of Science and Technology}
   {Kochi, India}
   {}
-  {\vspace{-2mm}
+  {
   \begin{itemize}\setlength{\itemsep}{2pt}
-    \item Minor in Machine Learning; Kochi Metro network analytics project.
-  \end{itemize}}
+    \item Minor in Machine Learning; Kochi Metro analytics project.
+  \end{itemize}
+  }
 
 % --- TECHNICAL SKILLS ---
 \section{Technical Skills}
