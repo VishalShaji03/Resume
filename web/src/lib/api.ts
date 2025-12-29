@@ -4,14 +4,14 @@ export interface UpdateResponse {
     conversation_id: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://hm1hqg1g20.execute-api.us-east-1.amazonaws.com/prod';
 
 export async function updateResume(instruction: string, job_description?: string): Promise<UpdateResponse> {
     if (!API_URL) {
         throw new Error('API URL not configured');
     }
 
-    const response = await fetch(API_URL, {
+    const response = await fetch(`${API_URL}/update`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
