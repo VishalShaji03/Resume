@@ -4,20 +4,17 @@
 
 \usepackage{newtxtext}
 \usepackage{newtxmath}
-
-% --- GEOMETRY (safe tightening) ---
 \usepackage[a4paper, top=1.3cm, bottom=1.3cm, left=1.6cm, right=1.6cm]{geometry}
 \renewcommand{\labelitemi}{\textbullet}
 
 % --- PERSONAL INFO ---
 \name{Vishal}{Shaji}
-\title{DevOps / Cloud Engineer}
-\address{\vspace{2mm}Kochi, India}{}
->>>>>>> 33ec2aa075f87737a58423a65553055713e656db
-\phone[mobile]{+91 7306997081}
-\email{vishshaji03@gmail.com}
-\social[linkedin]{VishalShaji}
-\social[github]{Vishhh03}
+\title{Cloud \& DevOps Engineer} [cite: 1]
+\address{Kochi, India}{} [cite: 3]
+\phone[mobile]{+91 7306997081} [cite: 2]
+\email{vishshaji03@gmail.com} [cite: 3]
+\social[linkedin]{VishalShaji} [cite: 4]
+\social[github]{Vishhh03} [cite: 5]
 
 \begin{document}
 
@@ -34,32 +31,32 @@
 \section{Experience}
 
 \cventry
-  {Jul 2025 -- Present}
-  {Programmer Analyst Trainee}
-  {Cognizant Technology Solutions}
-  {Chennai, India}
+  {Jul 2025 -- Present} [cite: 34]
+  {Programmer Analyst Trainee} [cite: 8]
+  {Cognizant Technology Solutions} [cite: 7]
+  {Chennai, India} [cite: 34]
   {}
   {
   \begin{itemize}\setlength{\itemsep}{2pt}
-    \item Built and deployed a multi-tier hotel management system using Angular, .NET, and SQL Server.
-    \item Containerized services using Docker and implemented CI/CD pipelines with GitHub Actions.
-    \item Implemented monitoring and centralized logging using Prometheus, Grafana, and ELK Stack.
-    \item Maintained Git workflows and performed pull request reviews.
+    \item Architected and deployed a multi-tier hotel management system utilizing Angular, .NET Core, and SQL Server. [cite: 9]
+    \item Containerized microservices using Docker and automated deployment workflows via GitHub Actions CI/CD pipelines. [cite: 10]
+    \item Established comprehensive observability using Prometheus, Grafana, and the ELK Stack for centralized logging. [cite: 11]
+    \item Managed collaborative Git workflows, including version control strategy and peer pull request reviews. [cite: 12]
   \end{itemize}
   }
 
 \vspace{1mm}
 
 \cventry
-  {Jan 2025 -- Jun 2025}
-  {Tech Consultant (Intern)}
-  {Bommaku Constructions}
-  {Hyderabad, India}
+  {Jan 2025 -- Jun 2025} [cite: 36]
+  {Tech Consultant (Intern)} [cite: 14]
+  {Bommaku Constructions} [cite: 13]
+  {Hyderabad, India} [cite: 35]
   {}
   {
   \begin{itemize}\setlength{\itemsep}{2pt}
-    \item Advised management on cloud-based workflows for real-time client demos.
-    \item Designed Unreal Engine 5 architectural visualizations for stakeholder presentations.
+    \item Advised executive management on cloud-based workflows to facilitate real-time client demonstrations. [cite: 15]
+    \item Developed high-fidelity architectural visualizations using Unreal Engine 5 for key stakeholder presentations. [cite: 16]
   \end{itemize}
   }
 
@@ -68,18 +65,17 @@
 
 \cventry
   {}
-  {Cloud DevOps Live Project}
-  {TerraLess -- Stateless Server Hosting}
-  {}
+  {Hybrid-Cloud Game Server SaaS}
+  {TerraLess} [cite: 18]
+  {\textit{\url{https://www.terraless.com}}} [cite: 24]
   {}
   {
   \begin{itemize}\setlength{\itemsep}{2pt}
-    \item Built a SaaS platform on Hetzner Cloud using Docker and Linux, reducing costs by 90 percent.
-    \item Engineered snapshot-based backups with freeze times under 0.1 seconds.
-    \item Designed disaster recovery workflows with recovery time under 60 seconds.
-    \item Implemented offsite replication for full data redundancy.
+    \item Architected a high-performance SaaS platform using an AWS Serverless control plane (Lambda, DynamoDB, Cognito) to manage stateful Hetzner Cloud instances, reducing hosting costs by 90\%. [cite: 20]
+    \item Engineered a storage layer on NVMe using Btrfs, developing automated shell scripts for incremental snapshots with data freeze times under 100ms and a 60s RTO. [cite: 21, 22]
+    \item Designed a rule-based automation engine in Node.js to trigger auto-shutdown policies based on real-time metrics, slashing active compute runtime by 60--80\%. [cite: 20]
+    \item Deployed a scalable Nginx-based ingress layer to shield backend IPs and implemented automated firewall rules for DDoS mitigation across game nodes. [cite: 23]
   \end{itemize}
-  \textit{\url{https://www.terraless.com}}
   }
 
 \vspace{1mm}
@@ -87,45 +83,44 @@
 \cventry
   {}
   {Client Website Deployment}
-  {Idha Art Stay}
-  {}
+  {Idha Art Stay} [cite: 25]
+  {\textit{\url{https://www.idhafortkochi.com}}} [cite: 28]
   {}
   {
   \begin{itemize}\setlength{\itemsep}{2pt}
-    \item Deployed and managed a production website using Next.js, GitHub Actions, and Cloudflare CDN.
+    \item Deployed and managed a production website leveraging Next.js, Cloudflare CDN, and GitHub Actions for automated delivery. [cite: 27]
   \end{itemize}
-  \textit{\url{https://www.idhafortkochi.com}}
   }
 
 % --- EDUCATION ---
 \section{Education}
 
 \cventry
-  {2019 -- 2023}
-  {Bachelor of Technology (B.Tech) -- Civil Engineering}
-  {TOCH Institute of Science and Technology}
-  {Kochi, India}
+  {2019 -- 2023} [cite: 37]
+  {Bachelor of Technology (B.Tech) -- Civil Engineering} [cite: 31]
+  {TOCH Institute of Science and Technology} [cite: 30]
+  {Kochi, India} [cite: 37]
   {}
   {
   \begin{itemize}\setlength{\itemsep}{2pt}
-    \item Minor in Machine Learning; Kochi Metro analytics project.
+    \item Minor in Machine Learning; led a final year project focused on Kochi Metro analytics. [cite: 32]
   \end{itemize}
   }
 
 % --- TECHNICAL SKILLS ---
 \section{Technical Skills}
 
-\cvitem{DevOps \& Cloud}{AWS (EC2, Lambda, IAM, S3, CloudWatch, ECS, Cognito), Docker, Kubernetes, Terraform, GitHub Actions, Prometheus, Grafana, ELK Stack, Bash, Git}
-\cvitem{Programming}{Python, JavaScript, C\#, SQL}
-\cvitem{Web}{Angular, .NET Core, Next.js, React, FastAPI, Cloudflare}
-\cvitem{Databases}{PostgreSQL, SQL Server, DynamoDB, MongoDB, RDS}
-\cvitem{OS}{Linux (Ubuntu, Amazon Linux)}
+\cvitem{Cloud \& Infra}{AWS (Lambda, DynamoDB, Cognito, EC2, S3, CloudWatch, ECS), Hybrid-Cloud (AWS + Hetzner), Docker, Kubernetes, Terraform, Serverless Framework} [cite: 38]
+\cvitem{DevOps}{GitHub Actions, Git, Bash Scripting, Prometheus, Grafana, ELK Stack (Elasticsearch, Logstash, Kibana)} [cite: 38]
+\cvitem{Systems}{Linux (Ubuntu, Amazon Linux), Btrfs Filesystem, Nginx Reverse Proxy, DDoS Mitigation, RCON Protocol} [cite: 42]
+\cvitem{Development}{Node.js, Python, JavaScript, C\#, SQL, Next.js, React, Angular, .NET Core} [cite: 39, 40]
+\cvitem{Databases}{PostgreSQL, SQL Server, DynamoDB, MongoDB, RDS} [cite: 41]
 
 % --- CERTIFICATIONS ---
 \section{Certifications}
 
-\cvitem{}{AWS Certified Cloud Practitioner}
-\cvitem{}{AWS Certified AI Practitioner}
-\cvitem{}{OCI Associate Architect}
+\cvitem{}{AWS Certified Cloud Practitioner} [cite: 44]
+\cvitem{}{AWS Certified AI Practitioner} [cite: 45]
+\cvitem{}{OCI Associate Architect} [cite: 46]
 
 \end{document}
