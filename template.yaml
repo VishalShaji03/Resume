@@ -88,6 +88,61 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref ConversationsTable
+      Environment:
+        Variables:
+          GITHUB_TOKEN: !Ref GitHubToken
+          GITHUB_REPO: !Ref GitHubRepo
+
+  GetHistoryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda_src/
+      Handler: handlers.get_history_handler
+      Environment:
+        Variables:
+          GITHUB_TOKEN: !Ref GitHubToken
+          GITHUB_REPO: !Ref GitHubRepo
+      Events:
+        ApiTrigger:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ResumeApi
+            Path: /history
+            Method: GET
+
+  GetResumeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda_src/
+      Handler: handlers.get_resume_handler
+      Environment:
+        Variables:
+          GITHUB_TOKEN: !Ref GitHubToken
+          GITHUB_REPO: !Ref GitHubRepo
+      Events:
+        ApiTrigger:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ResumeApi
+            Path: /resume
+            Method: GET
+
+  SaveResumeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda_src/
+      Handler: handlers.save_resume_handler
+      Environment:
+        Variables:
+          GITHUB_TOKEN: !Ref GitHubToken
+          GITHUB_REPO: !Ref GitHubRepo
+      Events:
+        ApiTrigger:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ResumeApi
+            Path: /save
+            Method: POST
 
   ConversationsTable:
     Type: AWS::Serverless::SimpleTable
@@ -96,7 +151,44 @@ Resources:
         Name: conversation_id
         Type: String
 
+  PdfBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "resume-previews-${AWS::AccountId}-${AWS::Region}"
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ["*"]
+            AllowedMethods: ["GET"]
+            AllowedOrigins: ["*"]
+
+  CompilePdfFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      MemorySize: 2048
+      Timeout: 60
+      Environment:
+        Variables:
+          PDF_BUCKET: !Ref PdfBucket
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref PdfBucket
+      Events:
+        ApiTrigger:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ResumeApi
+            Path: /preview
+            Method: POST
+    Metadata:
+      DockerTag: python3.9-v1
+      DockerContext: lambda_src/compile_pdf
+      Dockerfile: Dockerfile
+
 Outputs:
   ApiUrl:
     Description: "API Gateway endpoint URL"
     Value: !Sub "https://${ResumeApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/update"
+  PreviewBucket:
+    Description: "S3 Bucket for PDF previews"
+    Value: !Ref PdfBucket
