@@ -61,74 +61,46 @@ lambda_src/*.dist-info/
 lambda_src/*.egg-info/
 
 
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\DEPLOY.md =====
-# Deployment Guide
+===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\Dockerfile =====
+# Stage 1: Build & Setup Tectonic
+FROM python:3.11-slim as base
 
-## 1. Local Development (FastAPI)
-For rapid development with instant preview and local file editing.
+# Install system dependencies for Tectonic and PDF processing
+RUN apt-get update && apt-get install -y \
+    curl \
+    libfontconfig1 \
+    libgraphite2-3 \
+    libharfbuzz0b \
+    libicu-dev \
+    libssl-dev \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-### Prerequisites
-- Python 3.9+
-- [Tectonic](https://tectonic-typesetting.github.io/) installed and in PATH.
-- AWS Credentials configured (for Bedrock access).
+# Install Tectonic (Fast LaTeX engine)
+RUN curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net |sh
+RUN mv tectonic /usr/local/bin/
 
-### Run Local Server
-```bash
-cd local_server
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
-The API will be available at `http://localhost:8000`.
+# Set up working directory
+WORKDIR /app
 
-## 2. Production Deployment (Terraform)
-For deploying the serverless infrastructure to AWS.
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-### Prerequisites
-- [Terraform](https://www.terraform.io/) installed.
-- Docker installed (for building the compiler image).
+# Copy application source
+COPY compute/ ./compute/
+COPY resume.tex .
 
-### Setup
-1. **Configure Secrets**:
-   Create a `terraform.tfvars` file with your GitHub credentials:
-   ```bash
-   cd terraform
-   echo 'github_token = "YOUR_GITHUB_TOKEN"' > terraform.tfvars
-   ```
+# --- CRITICAL: Warmup Tectonic Cache ---
+# We run Tectonic once during build so it downloads the base LaTeX packages.
+# This makes the "Cold Start" in Fargate 10x faster.
+RUN tectonic resume.tex && rm resume.pdf
 
-2. **Build & Push Docker Image**:
-   *You must do this partially first because the Lambda resource depends on the image existing.*
-   ```bash
-   terraform init
-   
-   # 1. Create ECR Repo Only (Use quotes for PowerShell compatibility)
-   terraform apply -target="aws_ecr_repository.resume_compiler"
+# Expose FastAPI port
+EXPOSE 8000
 
-   
-   # 2. Login, Build, Push
-   # (Replace <ACCOUNT_ID> with your actual ID, get it via 'aws sts get-caller-identity')
-   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
-   
-   cd ../lambda_src/compile_pdf
-   docker build -t resume-compiler .
-   docker tag resume-compiler:latest <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/resume-compiler:latest
-   docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/resume-compiler:latest
-   ```
-
-2. **Deploy Full Infrastructure**:
-   ```bash
-   cd ../../terraform
-   
-   # Create a variables file (terraform.tfvars)
-   echo 'github_token = "YOUR_TOKEN"' > terraform.tfvars
-   
-   # Apply everything
-   terraform apply
-   ```
-
-### Notes
-- The **Local Backend** edits `resume.tex` directly on your disk.
-- The **Production Backend** commits changes to GitHub.
-
+# Start FastAPI with Uvicorn
+CMD ["python", "compute/main.py"]
 
 ===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\requirements.txt =====
 boto3
@@ -266,6 +238,72 @@ requests
 
 \end{document}
 
+===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\.github\workflows\deploy_ecs.yml =====
+name: Deploy Phantom Backend
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'compute/**'         # Your Bun/Elysia source
+      - 'lambda_src/**'      # Wake-up & Guardian logic
+      - 'terraform/**'       # Infra changes
+      - 'Dockerfile'
+      - 'package.json'
+      - 'bun.lockb'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.registry }}
+          IMAGE_TAG: latest
+        run: |
+          # Build using the Dockerfile (now optimized for Bun + Tectonic)
+          docker build -t $ECR_REGISTRY/resume-compiler:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/resume-compiler:$IMAGE_TAG
+
+      - name: SOCI Indexing (Lazy Loading Optimization)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.registry }}
+        run: |
+          # 1. Install SOCI CLI (The indexer)
+          curl -L https://github.com/awslabs/soci-snapshotter/releases/download/v0.4.0/soci-linux-amd64.tar.gz | tar -xz
+          sudo mv soci /usr/local/bin/
+          
+          # 2. Create the Seekable Index for the Bun image
+          # This allows Fargate to start the container without downloading the full image map.
+          soci create $ECR_REGISTRY/resume-compiler:latest
+          
+          # 3. Push the index to ECR (Stored as an artifact alongside your image)
+          soci push $ECR_REGISTRY/resume-compiler:latest
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: |
+          terraform init
+          # Ensure your terraform variables for Bun (like task commands) are set
+          terraform apply -auto-approve -var="hosted_zone_id=${{ secrets.HOSTED_ZONE_ID }}"
+
 ===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\.github\workflows\latex.yml =====
 name: Build Resume PDF
 
@@ -338,6 +376,72 @@ jobs:
           
           # Force push to pdf-output branch
           git push origin pdf-output-temp:pdf-output --force
+
+===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\compute\main.ts =====
+import { Elysia } from 'elysia';
+import { Route53Client, ChangeResourceRecordSetsCommand } from "@aws-sdk/client-route-53";
+import { ECSClient, StopTaskCommand } from "@aws-sdk/client-ecs";
+
+const IDLE_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+let lastActivity = Date.now();
+
+// 1. IP Self-Announcement to Route 53
+const syncDNS = async () => {
+    try {
+        const publicIp = await fetch('https://checkip.amazonaws.com').then(r => r.text());
+        const r53 = new Route53Client({ region: "us-east-1" });
+        await r53.send(new ChangeResourceRecordSetsCommand({
+            HostedZoneId: process.env.ZONE_ID,
+            ChangeBatch: {
+                Changes: [{
+                    Action: "UPSERT",
+                    ResourceRecordSet: {
+                        Name: process.env.DOMAIN_NAME, // api.yourdomain.com
+                        Type: "A", TTL: 60,
+                        ResourceRecords: [{ Value: publicIp.trim() }]
+                    }
+                }]
+            }
+        }));
+        console.log(`[Phantom] DNS updated to ${publicIp.trim()}`);
+    } catch (e) { console.error("DNS Sync Failed", e); }
+};
+
+// 2. Self-Destruct Timer
+setInterval(async () => {
+    if (Date.now() - lastActivity > IDLE_TIMEOUT) {
+        console.log("[Phantom] Idle timeout. Shutting down...");
+        const ecs = new ECSClient({ region: "us-east-1" });
+        // Get our own Task ARN from the Fargate metadata service
+        const metadata = await fetch("http://169.254.170.2/v2/metadata").then(r => r.json());
+        await ecs.send(new StopTaskCommand({
+            cluster: process.env.CLUSTER_NAME,
+            task: metadata.TaskARN,
+            reason: "Phantom Idle Shutdown"
+        }));
+    }
+}, 60000);
+
+// 3. API Routes
+new Elysia()
+    .onBeforeHandle(() => { lastActivity = Date.now(); })
+    .get("/health", () => ({ status: "warm" }))
+    .post("/compile", async () => {
+        const proc = Bun.spawn(["tectonic", "resume.tex"]);
+        await proc.exited;
+        return new Response(Bun.file("resume.pdf"));
+    })
+    .listen(8000);
+
+syncDNS();
+
+===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\compute\requirements.txt =====
+fastapi
+uvicorn
+python-multipart
+boto3
+requests
+
 
 ===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\lambda_src\config.json =====
 {
@@ -454,1312 +558,173 @@ class GitHubClient:
         return response.json()
 
 
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\lambda_src\handlers.py =====
-import json
-import os
-from github_client import GitHubClient
-from llm import get_latex_patches
-from patch_manager import apply_patches
-from config import RESUME_FILENAME
-import history_manager
-import uuid
-
-def lambda_handler(event, context):
-    """
-    Entry point for API Gateway Trigger.
-    Just passes the instruction to the Step Function (in a real scenario, API Gateway connects directly to Step Function).
-    If this is used as a proxy, we parse the body.
-    """
-    if 'body' in event:
-        body = json.loads(event['body'])
-        return body
-    return event
-
-def fetch_resume(event, context):
-    """
-    Step 1: Fetch resume content from GitHub.
-    Input: { "instruction": "..." } (from API/Start)
-    Output: { "content": "...", "sha": "...", "instruction": "..." }
-    """
-    try:
-        # If event comes from API Gateway V2/REST directly to SF, the input format helps.
-        # We assume input is just the JSON state passed down.
-        
-        instruction = event.get('instruction')
-        # If invoked via API Gateway Proxy integration mapping, might allow different structure
-        # But let's assume direct payload.
-        
-        client = GitHubClient()
-        content, sha = client.get_file_content(RESUME_FILENAME)
-        
-        return {
-            "content": content,
-            "sha": sha,
-            "instruction": instruction
-        }
-    except Exception as e:
-        raise e
-
-def generate_diff(event, context):
-    """
-    Step 2: Generate patches using Bedrock.
-    Input: { "current_latex": "...", "instruction": "..." }
-    Output: { "patches": [...], "conversation_id": "..." }
-    """
-    instruction = event.get('instruction')
-    current_latex = event.get('current_latex')
-    conversation_id = event.get('conversation_id')
-    
-    if not conversation_id:
-        conversation_id = str(uuid.uuid4())
-        print(f"Generated new conversation_id: {conversation_id}")
-
-    if not instruction or not current_latex:
-        raise ValueError("Missing instruction or current_latex")
-        
-    # Get history
-    history = history_manager.get_history(conversation_id)
-    
-    # Get job description if provided
-    job_description = event.get('job_description')
-
-    # Get patches from LLM
-    patches = get_latex_patches(current_latex, instruction, history, job_description)
-    
-    # Save the turn to history
-    # We save THE INSTRUCTION (User) and THE PATCHES (Assistant)
-    # This keeps the history clean with instructions and actions.
-    history_manager.add_turn(conversation_id, instruction, patches)
-
-    return {
-        "patches": patches,
-        "conversation_id": conversation_id
-    }
-
-def commit_update(event, context):
-    """
-    Step 3: Apply patches and commit.
-    Input: { "patches": [...], "current_latex": "...", "sha": "...", "instruction": "..." }
-    """
-    patches = event.get('patches')
-    current_latex = event.get('current_latex')
-    sha = event.get('sha')
-    instruction = event.get('instruction')
-    conversation_id = event.get('conversation_id')
-
-    if not patches or not current_latex or not sha:
-        raise ValueError("Missing patches, current_latex, or sha")
-        
-    # Apply patches
-    new_latex = apply_patches(current_latex, patches)
-    
-    # Commit to GitHub
-    # Assuming GITHUB_TOKEN and GITHUB_REPO are defined elsewhere or will be added
-    client = GitHubClient(os.environ.get('GITHUB_TOKEN'), os.environ.get('GITHUB_REPO'))
-    new_sha = client.update_file(
-        file_path=RESUME_FILENAME,
-        content=new_latex,
-        commit_message=f"AI Update: {instruction}",
-        sha=sha
-    )
-    
-    return {
-        "status": "success",
-        "new_sha": new_sha,
-        "conversation_id": conversation_id
-    }
-
-def get_history_handler(event, context):
-    """
-    Returns list of commits for the resume file.
-    Input: {} (GET /history)
-    """
-    try:
-        client = GitHubClient()
-        commits = client.list_commits()
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Content-Type": "application/json"
-            },
-            "body": json.dumps(commits)
-        }
-    except Exception as e:
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"error": str(e)})
-        }
-
-def get_resume_handler(event, context):
-    """
-    Returns the raw content of the resume, optionally at a specific commit ref.
-    Input: queryStringParameters: { ref: "sha" } (GET /resume)
-    """
-    try:
-        ref = None
-        if event.get('queryStringParameters'):
-            ref = event['queryStringParameters'].get('ref')
-            
-        client = GitHubClient()
-        content, sha = client.get_file_content(RESUME_FILENAME, ref=ref)
-        
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Content-Type": "text/plain" 
-            },
-            "body": content
-        }
-    except Exception as e:
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"error": str(e)})
-        }
-
-def save_resume_handler(event, context):
-    """
-    Saves raw LaTeX content to GitHub.
-    Input: body: { latex: "...", message: "Manual update" } (POST /save)
-    """
-    try:
-        body = json.loads(event.get('body', '{}'))
-        content = body.get('latex')
-        message = body.get('message', 'Manual update via Editor')
-        
-        if not content:
-            return {"statusCode": 400, "body": "Missing 'latex'"}
-
-        client = GitHubClient()
-        # 1. Get current SHA
-        _, sha = client.get_file_content(RESUME_FILENAME)
-        
-        # 2. Update file
-        result = client.update_file(RESUME_FILENAME, content, sha, message)
-        
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Content-Type": "application/json"
-            },
-            "body": json.dumps(result)
-        }
-    except Exception as e:
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"error": str(e)})
-        }
-
-
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\lambda_src\history_manager.py =====
+===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\lambda_src\guardian.py =====
 import boto3
-import time
-import json
-import os
-from config import DYNAMODB_TABLE_NAME
+from datetime import datetime
 
-# Initialize DynamoDB resource
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table(DYNAMODB_TABLE_NAME)
+# DynamoDB table 'DailySpend' with Partition Key 'date' (String)
+LIMIT = 1.00 # $1.00 Max per day
 
-def get_history(conversation_id):
-    """
-    Retrieves the conversation history for a given ID.
-    Returns a list of messages: [{"role": "user", "content": "..."}, ...]
-    """
-    if not conversation_id:
-        return []
-
-    try:
-        response = table.get_item(Key={'conversation_id': conversation_id})
-        if 'Item' in response:
-            return response['Item'].get('messages', [])
-        else:
-            return []
-    except Exception as e:
-        print(f"Error fetching history for {conversation_id}: {e}")
-        return []
-
-def add_turn(conversation_id, user_message, assistant_message):
-    """
-    Appends a new user message and assistant message (list of patches or text) to history.
-    """
-    if not conversation_id:
-        return
-
-    # Structure messages
-    new_messages = [
-        {"role": "user", "content": user_message},
-        {"role": "assistant", "content": json.dumps(assistant_message)} 
-    ]
+def handler(event, context):
+    db = boto3.resource('dynamodb')
+    table = db.Table('DailySpend')
+    today = datetime.now().strftime('%Y-%m-%d')
     
-    try:
-        # We need to append to the list. 
-        # If item doesn't exist, Create it.
-        # This is an atomic upsert operation using update_item
-        table.update_item(
-            Key={'conversation_id': conversation_id},
-            UpdateExpression="SET messages = list_append(if_not_exists(messages, :empty_list), :new_msgs), updated_at = :timestamp",
-            ExpressionAttributeValues={
-                ':new_msgs': new_messages,
-                ':empty_list': [],
-                ':timestamp': int(time.time())
-            }
-        )
-    except Exception as e:
-        print(f"Error adding turn to {conversation_id}: {e}")
-
-
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\lambda_src\llm.py =====
-import boto3
-import json
-import os
-from config import BEDROCK_REGION, MODEL_ID
-
-# Initialize Bedrock client
-try:
-    bedrock = boto3.client(service_name='bedrock-runtime', region_name=BEDROCK_REGION)
-except Exception as e:
-    print(f"Error initializing Bedrock client: {e}")
-    bedrock = None
-
-
-
-def get_latex_patches(current_latex, user_request, history=[], job_description=None):
-    """
-    Sends the current LaTeX, user request, and conversation history to Llama 4 Scout.
-    Returns a list of search/replace patches in JSON format.
-    """
-    if not bedrock:
-        raise Exception("Bedrock client is not initialized.")
-
-    # Optimize history for context window (16k limit)
-    MAX_HISTORY_MSGS = 10
-    MAX_HISTORY_CHARS = 32000
-
-    # 1. Sliding window (last N messages)
-    if len(history) > MAX_HISTORY_MSGS:
-        history = history[-MAX_HISTORY_MSGS:]
-
-    # 2. Token/Char limit truncation
-    final_history = []
-    current_chars = 0
+    # 1. Check current spend
+    res = table.get_item(Key={'date': today})
+    current_spend = float(res.get('Item', {}).get('total', 0))
     
-    for msg in reversed(history):
-        content = msg.get('content', '')
-        # Approximate check (content + role overhead)
-        msg_len = len(content) + 50 
-        
-        if current_chars + msg_len > MAX_HISTORY_CHARS:
-            break
-            
-        final_history.insert(0, msg)
-        current_chars += msg_len
+    if current_spend > LIMIT:
+        return {"statusCode": 402, "body": "Daily AI budget exhausted."}
+
+    # 2. Proxy request to Bedrock
+    bedrock = boto3.client('bedrock-runtime')
+    response = bedrock.invoke_model(...) # Your normal Bedrock call
     
-    history = final_history
-
-    # Format history
-    history_block = ""
-    for msg in history:
-        role = msg.get('role', 'user')
-        content = msg.get('content', '')
-        history_block += f"<|start_header_id|>{role}<|end_header_id|>\n{content}\n<|eot_id|>\n"
-
-    jd_instruction = ""
-    if job_description:
-        jd_instruction = f"""
-        JOB DESCRIPTION:
-        {job_description}
-        
-        TASK:
-        Tailor the resume to match the keywords, skills, and requirements from the above JOB DESCRIPTION.
-        Highlight relevant experience and remove irrelevant details to align with this specific role.
-        """
-
-    prompt = f"""
-    <|begin_of_text|><|start_header_id|>system<|end_header_id|>
-    You are an expert LaTeX developer. Your job is to modify a LaTeX resume based on the user's natural language request.
+    # 3. Update spend based on token count (Estimate)
+    # Price per 1k tokens for Llama 3 varies; update 'total' here
+    table.update_item(...) 
     
-    IMPORTANT: You must NOT return the full file. You must return a list of SEARCH and REPLACE blocks in JSON format.
-    The goal is to modify the file by finding exact unique text blocks and replacing them.
-    
-    RULES:
-    1. Output strictly a valid JSON list of objects.
-    2. Each object must have "search" and "replace" keys.
-    3. 'search': A unique block of text from the original file that needs to be replaced. MUST MATCH EXACTLY (whitespace, indentation).
-    4. 'replace': The new text that will replace the 'search' block.
-    5. Include enough context in 'search' to ensure it is unique.
-    6. Minimum indentation and formatting must be preserved or intentionally updated in 'replace'.
-    
-    CRITICAL INSTRUCTIONS:
-    - **ONE-PAGE ENFORCER**: Prioritize brevity. Ensure the generated content is concise enough to fit on a single page. Remove older or less relevant experience if necessary to save space.
-    {jd_instruction}
-    
-    CAVEATS & COMPATIBILITY:
-    - This project uses the 'Tectonic' engine. AVOID unsupported packages or shell-escape commands.
-    - DO NOT use \\fontspec unless absolutely necessary; Tectonic handles fonts differently.
-    - Be careful with nested list environments inside specialized commands (like \\cventry). Ensure \\begin{{itemize}} is wrapped in braces {{}} if inside a command argument.
-    - DO NOT remove the document preamble or structual commands like \\documentclass.
-    - When rewriting bullets, stick to \\item ... without manual bullet symbols if using moderncv theme defaults, OR use \\textbullet explicitly if requested.
-    
-    Example Output:
-    [
-        {{
-            "search": "\\\\name{{Old}}{{Name}}",
-            "replace": "\\\\name{{New}}{{Name}}"
-        }}
-    ]
-
-    <|eot_id|>
-    
-    {history_block}
-
-    <|start_header_id|>user<|end_header_id|>
-    Current LaTeX Resume:
-    {current_latex}
-    
-    User Request:
-    {user_request}
-    
-    Output the JSON patches:
-    <|eot_id|><|start_header_id|>assistant<|end_header_id|>
-    """
-
-    body = json.dumps({
-        "prompt": prompt,
-        "max_gen_len": 2048,
-        "temperature": 0.0, # Low temperature for precision
-        "top_p": 0.9,
-    })
-
-    try:
-        response = bedrock.invoke_model(
-            body=body,
-            modelId=MODEL_ID,
-            accept='application/json',
-            contentType='application/json'
-        )
-        
-        response_body = json.loads(response.get('body').read())
-        output_text = response_body.get('generation').strip()
-        
-        # Cleanup if the model output markdown code blocks
-        if "```json" in output_text:
-            output_text = output_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in output_text:
-             output_text = output_text.replace("```", "").strip()
-             
-        patches = json.loads(output_text)
-        return patches
-
-    except json.JSONDecodeError:
-        print(f"Failed to decode JSON from model output: {output_text}")
-        raise Exception("Model did not return valid JSON.")
-    except Exception as e:
-        print(f"Error invoking Bedrock model: {e}")
-        raise e
-
-
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\lambda_src\patch_manager.py =====
-
-def apply_patches(original_text, patches):
-    """
-    Applies a list of search/replace patches to the original text.
-    
-    Args:
-        original_text (str): The original file content.
-        patches (list): List of dicts with 'search' and 'replace' keys.
-        
-    Returns:
-        tuple: (updated_text, success_bool, error_message)
-    """
-    updated_text = original_text
-    
-    for i, patch in enumerate(patches):
-        search_block = patch.get('search')
-        replace_block = patch.get('replace')
-        
-        if not search_block:
-            return original_text, False, f"Patch {i} missing 'search' block."
-        
-        # Normalize line endings for comparison ?? Optional, but good for robustness
-        # For now, strict matching
-        
-        count = updated_text.count(search_block)
-        
-        if count == 0:
-            # Try to be a bit more flexible?
-            # normalize newlines
-            norm_text = updated_text.replace('\r\n', '\n')
-            norm_search = search_block.replace('\r\n', '\n')
-            if norm_text.count(norm_search) == 1:
-                updated_text = norm_text.replace(norm_search, replace_block)
-                continue
-            
-            return original_text, False, f"Patch {i}: Search block not found in text."
-            
-        if count > 1:
-            return original_text, False, f"Patch {i}: Search block found {count} times. Ambiguous."
-            
-        updated_text = updated_text.replace(search_block, replace_block)
-        
-    return updated_text, True, "Success"
-
+    return response
 
 ===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\lambda_src\requirements.txt =====
 boto3
 requests
 
 
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\lambda_src\compile_pdf\app.py =====
-import json
-import os
+===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\lambda_src\wake_up.py =====
 import boto3
-import subprocess
-import base64
-import uuid
-
-s3 = boto3.client('s3')
-BUCKET_NAME = os.environ.get('PDF_BUCKET')
 
 def handler(event, context):
-    try:
-        # 1. Parse Input
-        body = json.loads(event.get('body', '{}'))
-        latex_content = body.get('latex')
-        
-        if not latex_content:
-            return {"statusCode": 400, "body": "Missing 'latex' in body"}
-
-        # 2. Write to /tmp
-        job_id = str(uuid.uuid4())
-        tex_file = f"/tmp/{job_id}.tex"
-        pdf_file = f"/tmp/{job_id}.pdf"
-        
-        with open(tex_file, 'w') as f:
-            f.write(latex_content)
-            
-        # 3. Compile with Tectonic
-        # Tectonic is installed in /usr/local/bin by Dockerfile
-        cmd = ["tectonic", tex_file]
-        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        
-        # 4. Upload to S3
-        key = f"previews/{job_id}.pdf"
-        s3.upload_file(pdf_file, BUCKET_NAME, key)
-        
-        # 5. Generate Presigned URL
-        url = s3.generate_presigned_url(
-            'get_object',
-            Params={'Bucket': BUCKET_NAME, 'Key': key},
-            ExpiresIn=3600
+    ecs = boto3.client('ecs')
+    # Check if task is already running to avoid duplicates
+    tasks = ecs.list_tasks(cluster='resume-cluster', serviceName='resume-service')
+    
+    if not tasks['taskArns']:
+        ecs.run_task(
+            cluster='resume-cluster',
+            launchType='FARGATE',
+            taskDefinition='resume-task',
+            count=1,
+            capacityProviderStrategy=[{'capacityProvider': 'FARGATE_SPOT', 'weight': 1}]
         )
-        
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Content-Type": "application/json"
-            },
-            "body": json.dumps({"url": url})
-        }
-            
-    except subprocess.CalledProcessError as e:
-        return {
-            "statusCode": 500,
-            "body": json.dumps({
-                "error": "Compilation Failed",
-                "details": e.stderr.decode('utf-8')
-            })
-        }
-    except Exception as e:
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"error": str(e)})
-        }
-
-
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\lambda_src\compile_pdf\Dockerfile =====
-FROM public.ecr.aws/lambda/python:3.12
-
-# Install Tectonic (LaTeX compiler)
-# Need curl, tar, gzip, and runtime libs like graphite2
-RUN dnf install -y tar xz gzip fontconfig
-RUN curl -L https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.15.0/tectonic-0.15.0-x86_64-unknown-linux-musl.tar.gz | tar -xz -C /usr/local/bin/
-
-
-# Install python dependencies for local app (if needed)
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-# Copy handler
-COPY app.py ${LAMBDA_TASK_ROOT}
-
-# Warmup Tectonic Cache
-# NOTE: We cannot use /tmp because Lambda mounts a fresh empty tmpfs there at runtime.
-# We must use a directory that persists in the image.
-ENV TECTONIC_CACHE_DIR=/usr/local/share/tectonic_cache
-COPY warmup.tex ${LAMBDA_TASK_ROOT}
-RUN mkdir -p ${TECTONIC_CACHE_DIR} && \
-    tectonic ${LAMBDA_TASK_ROOT}/warmup.tex && \
-    rm ${LAMBDA_TASK_ROOT}/warmup.tex && \
-    chmod -R 777 ${TECTONIC_CACHE_DIR}
-
-CMD [ "app.handler" ]
-
-
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\lambda_src\compile_pdf\requirements.txt =====
-boto3
-requests
-
-
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\lambda_src\compile_pdf\warmup.tex =====
-\documentclass[11pt,a4paper,sans]{moderncv}
-\moderncvstyle{banking}
-\moderncvcolor{black}
-\usepackage[utf8]{inputenc}
-\usepackage[scale=0.75]{geometry}
-\usepackage{enumitem}
-\usepackage{changepage}
-
-\name{John}{Doe}
-\email{john@doe.com}
-\social[linkedin]{john}
-\social[github]{john}
-\begin{document}
-\makecvtitle
-\section{Warmup}
-Dummy content to trigger package downloads.
-\end{document}
-
-
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\local_server\main.py =====
-import sys
-import os
-import json
-import uuid
-import subprocess
-import shutil
-from typing import Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, Body
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-
-# Add lambda_src to path to reuse logic
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lambda_src'))
-
-from llm import get_latex_patches
-from patch_manager import apply_patches
-from config import RESUME_FILENAME
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Paths
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESUME_PATH = os.path.join(BASE_DIR, RESUME_FILENAME)
-HISTORY_FILE = os.path.join(BASE_DIR, "local_history.json")
-
-# --- Helpers ---
-
-def get_history():
-    if not os.path.exists(HISTORY_FILE):
-        return {}
-    with open(HISTORY_FILE, 'r') as f:
-        return json.load(f)
-
-def save_history(history):
-    with open(HISTORY_FILE, 'w') as f:
-        json.dump(history, f, indent=2)
-
-def add_turn(conversation_id, instruction, patches):
-    history = get_history()
-    if conversation_id not in history:
-        history[conversation_id] = []
+        return {"status": "starting", "message": "Phantom Backend is waking up..."}
     
-    # Matches DynamoDB structure roughly
-    history[conversation_id].append({"role": "user", "content": instruction})
-    history[conversation_id].append({"role": "assistant", "content": json.dumps(patches)})
-    save_history(history)
+    return {"status": "running", "message": "Backend is already warm."}
 
-# --- Models ---
-
-class UpdateRequest(BaseModel):
-    instruction: str
-    conversation_id: Optional[str] = None
-    job_description: Optional[str] = None
-
-class PreviewRequest(BaseModel):
-    latex: Optional[str] = None
-
-class SaveRequest(BaseModel):
-    latex: str
-    message: Optional[str] = "Saved locally"
-
-# --- Endpoints ---
-
-@app.get("/resume")
-def get_resume():
-    if not os.path.exists(RESUME_PATH):
-        raise HTTPException(status_code=404, detail="Resume file not found")
-    with open(RESUME_PATH, 'r', encoding='utf-8') as f:
-        content = f.read()
-    return content
-
-@app.post("/preview")
-def preview_resume(request: PreviewRequest):
-    # If latex provided, use it. Else use file content.
-    latex_content = request.latex
-    if not latex_content:
-        # Use existing file
-        with open(RESUME_PATH, 'r', encoding='utf-8') as f:
-            latex_content = f.read()
-            
-    # Compile
-    # We'll use a unique ID for temp files to allow concurrent requests
-    job_id = str(uuid.uuid4())
-    temp_dir = os.path.join(BASE_DIR, "temp_builds")
-    os.makedirs(temp_dir, exist_ok=True)
-    
-    tex_file = os.path.join(temp_dir, f"{job_id}.tex")
-    
-    with open(tex_file, 'w', encoding='utf-8') as f:
-        f.write(latex_content)
-        
-    try:
-        # Run tectonic
-        subprocess.run(["tectonic", tex_file], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        pdf_file = os.path.join(temp_dir, f"{job_id}.pdf")
-        
-        if not os.path.exists(pdf_file):
-            raise Exception("PDF file not generated")
-            
-        return FileResponse(pdf_file, media_type="application/pdf", filename="resume.pdf")
-        
-    except subprocess.CalledProcessError as e:
-        return JSONResponse(status_code=500, content={
-            "error": "Compilation Failed",
-            "details": e.stderr.decode('utf-8')
-        })
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
-@app.post("/update")
-def update_resume(request: UpdateRequest):
-    conversation_id = request.conversation_id or str(uuid.uuid4())
-    
-    try:
-        # 1. Read current LaTeX
-        with open(RESUME_PATH, 'r', encoding='utf-8') as f:
-            current_latex = f.read()
-            
-        # 2. Get History
-        full_history = get_history()
-        history = full_history.get(conversation_id, [])
-        
-        # 3. Call LLM (Bedrock)
-        # Note: This uses the AWS credentials on the machine
-        patches = get_latex_patches(current_latex, request.instruction, history, request.job_description)
-        
-        # 4. Apply patches
-        new_latex = apply_patches(current_latex, patches)
-        
-        # 5. Save to file (LOCAL MODE: We overwrite the file directly!)
-        with open(RESUME_PATH, 'w', encoding='utf-8') as f:
-            f.write(new_latex)
-            
-        # 6. Save History
-        add_turn(conversation_id, request.instruction, patches)
-        
-        return {
-            "conversation_id": conversation_id,
-            "status": "success",
-            "patches": patches
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/history")
-def list_history():
-    # Return mocked commit history for now, or the conversation logs?
-    # The frontend expects git commits. 
-    # For local mode, we might just return the local file stats or a placeholder.
-    return [
-        {
-            "sha": "local",
-            "message": "Current Local Version",
-            "date": "Now",
-            "author": "You"
-        }
-    ]
-
-@app.post("/save")
-def save_resume(request: SaveRequest):
-    try:
-        with open(RESUME_PATH, 'w', encoding='utf-8') as f:
-            f.write(request.latex)
-        return {"status": "success"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\local_server\requirements.txt =====
-fastapi
-uvicorn
-python-multipart
-boto3
-requests
-
-
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\statemachine\resume_workflow.asl.json =====
-{
-  "Comment": "A state machine that updates a resume based on user instruction",
-  "StartAt": "FetchResume",
-  "States": {
-    "FetchResume": {
-      "Type": "Task",
-      "Resource": "${FetchResumeFunctionArn}",
-      "ResultPath": "$.resume_data",
-      "Next": "GenerateDiff"
-    },
-    "GenerateDiff": {
-      "Type": "Task",
-      "Resource": "${GenerateDiffFunctionArn}",
-      "Parameters": {
-        "current_latex.$": "$.resume_data.content",
-        "instruction.$": "$.instruction"
-      },
-      "ResultPath": "$.diff_output",
-      "Next": "CommitUpdate"
-    },
-    "CommitUpdate": {
-      "Type": "Task",
-      "Resource": "${CommitUpdateFunctionArn}",
-      "Parameters": {
-        "patches.$": "$.diff_output.patches",
-        "conversation_id.$": "$.diff_output.conversation_id",
-        "current_latex.$": "$.resume_data.content",
-        "sha.$": "$.resume_data.sha",
-        "instruction.$": "$.instruction"
-      },
-      "End": true
-    }
-  }
-}
-
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\terraform\.terraform.lock.hcl =====
-# This file is maintained automatically by "terraform init".
-# Manual edits may be lost in future updates.
-
-provider "registry.terraform.io/hashicorp/archive" {
-  version     = "2.7.1"
-  constraints = "~> 2.0"
-  hashes = [
-    "h1:RzToQiFwVaxcV0QmgbyaKgNOhqc6oLKiFyZTrQSGcog=",
-    "zh:19881bb356a4a656a865f48aee70c0b8a03c35951b7799b6113883f67f196e8e",
-    "zh:2fcfbf6318dd514863268b09bbe19bfc958339c636bcbcc3664b45f2b8bf5cc6",
-    "zh:3323ab9a504ce0a115c28e64d0739369fe85151291a2ce480d51ccbb0c381ac5",
-    "zh:362674746fb3da3ab9bd4e70c75a3cdd9801a6cf258991102e2c46669cf68e19",
-    "zh:7140a46d748fdd12212161445c46bbbf30a3f4586c6ac97dd497f0c2565fe949",
-    "zh:78d5eefdd9e494defcb3c68d282b8f96630502cac21d1ea161f53cfe9bb483b3",
-    "zh:875e6ce78b10f73b1efc849bfcc7af3a28c83a52f878f503bb22776f71d79521",
-    "zh:b872c6ed24e38428d817ebfb214da69ea7eefc2c38e5a774db2ccd58e54d3a22",
-    "zh:cd6a44f731c1633ae5d37662af86e7b01ae4c96eb8b04144255824c3f350392d",
-    "zh:e0600f5e8da12710b0c52d6df0ba147a5486427c1a2cc78f31eea37a47ee1b07",
-    "zh:f21b2e2563bbb1e44e73557bcd6cdbc1ceb369d471049c40eb56cb84b6317a60",
-    "zh:f752829eba1cc04a479cf7ae7271526b402e206d5bcf1fcce9f535de5ff9e4e6",
-  ]
-}
-
-provider "registry.terraform.io/hashicorp/aws" {
-  version     = "5.100.0"
-  constraints = "~> 5.0"
-  hashes = [
-    "h1:H3mU/7URhP0uCRGK8jeQRKxx2XFzEqLiOq/L2Bbiaxs=",
-    "zh:054b8dd49f0549c9a7cc27d159e45327b7b65cf404da5e5a20da154b90b8a644",
-    "zh:0b97bf8d5e03d15d83cc40b0530a1f84b459354939ba6f135a0086c20ebbe6b2",
-    "zh:1589a2266af699cbd5d80737a0fe02e54ec9cf2ca54e7e00ac51c7359056f274",
-    "zh:6330766f1d85f01ae6ea90d1b214b8b74cc8c1badc4696b165b36ddd4cc15f7b",
-    "zh:7c8c2e30d8e55291b86fcb64bdf6c25489d538688545eb48fd74ad622e5d3862",
-    "zh:99b1003bd9bd32ee323544da897148f46a527f622dc3971af63ea3e251596342",
-    "zh:9b12af85486a96aedd8d7984b0ff811a4b42e3d88dad1a3fb4c0b580d04fa425",
-    "zh:9f8b909d3ec50ade83c8062290378b1ec553edef6a447c56dadc01a99f4eaa93",
-    "zh:aaef921ff9aabaf8b1869a86d692ebd24fbd4e12c21205034bb679b9caf883a2",
-    "zh:ac882313207aba00dd5a76dbd572a0ddc818bb9cbf5c9d61b28fe30efaec951e",
-    "zh:bb64e8aff37becab373a1a0cc1080990785304141af42ed6aa3dd4913b000421",
-    "zh:dfe495f6621df5540d9c92ad40b8067376350b005c637ea6efac5dc15028add4",
-    "zh:f0ddf0eaf052766cfe09dea8200a946519f653c384ab4336e2a4a64fdd6310e9",
-    "zh:f1b7e684f4c7ae1eed272b6de7d2049bb87a0275cb04dbb7cda6636f600699c9",
-    "zh:ff461571e3f233699bf690db319dfe46aec75e58726636a0d97dd9ac6e32fb70",
-  ]
-}
-
-
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\terraform\api.tf =====
-resource "aws_apigatewayv2_api" "resume_api" {
-  name          = "resume-api"
-  protocol_type = "HTTP"
-  tags          = local.common_tags
+===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\terraform\ecs.tf =====
+resource "aws_ecs_cluster" "phantom_cluster" {
+  name = "resume-phantom-cluster"
   
-  cors_configuration {
-    allow_origins = ["*"]
-    allow_methods = ["*"]
-    allow_headers = ["*"]
-    max_age       = 300
+  # Enable SOCI Indexing support (Managed by Fargate)
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
   }
 }
 
-resource "aws_apigatewayv2_stage" "prod" {
-  api_id      = aws_apigatewayv2_api.resume_api.id
-  name        = "prod"
-  auto_deploy = true
+resource "aws_ecs_cluster_capacity_providers" "phantom_cp" {
+  cluster_name = aws_ecs_cluster.phantom_cluster.name
+  capacity_providers = ["FARGATE_SPOT"]
+
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 1
+  }
 }
 
-# --- Integrations ---
-# We will define integrations in lambda.tf and step_function.tf to keep things co-located
-# But for clarity, we can define the routes here if we want centralized routing.
-# Let's keep routes here for clarity.
+resource "aws_ecs_task_definition" "resume_task" {
+  family                   = "resume-phantom-task"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 512
+  memory                   = 1024
+  execution_role_arn       = aws_iam_role.ecs_exec_role.arn
+  task_role_arn            = aws_iam_role.fargate_task_role.arn
 
-resource "aws_apigatewayv2_route" "update_resume" {
-  api_id    = aws_apigatewayv2_api.resume_api.id
-  route_key = "POST /update"
-  target    = "integrations/${aws_apigatewayv2_integration.step_function.id}"
+  container_definitions = jsonencode([{
+    name  = "resume-api"
+    image = "${aws_ecr_repository.resume_compiler.repository_url}:latest"
+    portMappings = [{ containerPort = 8000 }]
+    environment = [
+      { name = "HOSTED_ZONE_ID", value = var.hosted_zone_id },
+      { name = "STATE_BUCKET",   value = aws_s3_bucket.state_bucket.id }
+    ]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = "/ecs/resume-phantom"
+        "awslogs-region"        = var.aws_region
+        "awslogs-stream-prefix" = "ecs"
+      }
+    }
+  }])
 }
 
-resource "aws_apigatewayv2_route" "preview_resume" {
-  api_id    = aws_apigatewayv2_api.resume_api.id
-  route_key = "POST /preview"
-  target    = "integrations/${aws_apigatewayv2_integration.compile_pdf.id}"
+resource "aws_cloudwatch_log_group" "ecs_logs" {
+  name              = "/ecs/resume-phantom"
+  retention_in_days = 7
 }
 
-resource "aws_apigatewayv2_route" "get_history" {
-  api_id    = aws_apigatewayv2_api.resume_api.id
-  route_key = "GET /history"
-  target    = "integrations/${aws_apigatewayv2_integration.get_history.id}"
-}
-
-resource "aws_apigatewayv2_route" "get_resume" {
-  api_id    = aws_apigatewayv2_api.resume_api.id
-  route_key = "GET /resume"
-  target    = "integrations/${aws_apigatewayv2_integration.get_resume.id}"
-}
-
-resource "aws_apigatewayv2_route" "save_resume" {
-  api_id    = aws_apigatewayv2_api.resume_api.id
-  route_key = "POST /save"
-  target    = "integrations/${aws_apigatewayv2_integration.save_resume.id}"
-}
-
-output "api_endpoint" {
-  value = aws_apigatewayv2_stage.prod.invoke_url
-}
-
-
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\terraform\lambda.tf =====
-# --- IAM Role for Lambdas ---
-resource "aws_iam_role" "lambda_role" {
-  name = "resume_lambda_role"
-
+===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\terraform\iam.tf =====
+# Task Execution Role (Pulling images, logging)
+resource "aws_iam_role" "ecs_exec_role" {
+  name = "resume_ecs_exec_role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "lambda.amazonaws.com"
-        }
-      }
-    ]
+    Statement = [{ Action = "sts:AssumeRole", Effect = "Allow", Principal = { Service = "ecs-tasks.amazonaws.com" } }]
   })
 }
 
-resource "aws_iam_role_policy_attachment" "lambda_basic" {
-  role       = aws_iam_role.lambda_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+resource "aws_iam_role_policy_attachment" "ecs_exec_basic" {
+  role       = aws_iam_role.ecs_exec_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
-resource "aws_iam_role_policy" "lambda_permissions" {
-  name = "resume_lambda_permissions"
-  role = aws_iam_role.lambda_role.id
+# Task Role (Actual logic: DNS, S3, ECS Stop)
+resource "aws_iam_role" "fargate_task_role" {
+  name = "resume_fargate_task_role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{ Action = "sts:AssumeRole", Effect = "Allow", Principal = { Service = "ecs-tasks.amazonaws.com" } }]
+  })
+}
 
+resource "aws_iam_role_policy" "phantom_perms" {
+  name = "phantom_backend_permissions"
+  role = aws_iam_role.fargate_task_role.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:DeleteItem",
-          "dynamodb:Scan",
-          "dynamodb:Query"
-        ]
-        Resource = aws_dynamodb_table.conversations.arn
+        Effect   = "Allow"
+        Action   = ["route53:ChangeResourceRecordSets"]
+        Resource = "arn:aws:route53:::hostedzone/${var.hosted_zone_id}"
       },
       {
-        Effect = "Allow"
-        Action = [
-          "bedrock:InvokeModel"
-        ]
-        Resource = "*" 
+        Effect   = "Allow"
+        Action   = ["ecs:StopTask"]
+        Resource = "*"
       },
       {
-         Effect = "Allow"
-         Action = [
-           "ssm:GetParameter"
-         ]
-         Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:PutObject",
-          "s3:GetObject",
-          "s3:DeleteObject"
-        ]
-        Resource = "${aws_s3_bucket.pdf_bucket.arn}/*"
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject"]
+        Resource = "${aws_s3_bucket.state_bucket.arn}/*"
       }
     ]
   })
 }
 
-# --- Python Source Code ---
-data "archive_file" "lambda_zip" {
-  type        = "zip"
-  source_dir  = "${path.module}/../lambda_src"
-  output_path = "${path.module}/lambda_function.zip"
-  excludes    = ["compile_pdf", "__pycache__", "*.pyc"] 
-}
-
-# --- Lambda Functions ---
-
-resource "aws_lambda_function" "fetch_resume" {
-  function_name    = "FetchResumeFunction"
-  filename         = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  role             = aws_iam_role.lambda_role.arn
-  handler          = "handlers.fetch_resume"
-  runtime          = "python3.9"
-  timeout          = 60
-  
-  environment {
-    variables = {
-      GITHUB_TOKEN = var.github_token
-      GITHUB_REPO  = var.github_repo
-    }
-  }
-}
-
-resource "aws_lambda_function" "generate_diff" {
-  function_name    = "GenerateDiffFunction"
-  filename         = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  role             = aws_iam_role.lambda_role.arn
-  handler          = "handlers.generate_diff"
-  runtime          = "python3.9"
-  timeout          = 120 # Bedrock can take time
-  
-  environment {
-    variables = {
-      DYNAMODB_TABLE_NAME = aws_dynamodb_table.conversations.name
-    }
-  }
-}
-
-resource "aws_lambda_function" "commit_update" {
-  function_name    = "CommitUpdateFunction"
-  filename         = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  role             = aws_iam_role.lambda_role.arn
-  handler          = "handlers.commit_update"
-  runtime          = "python3.9"
-  timeout          = 60
-  
-  environment {
-    variables = {
-      GITHUB_TOKEN = var.github_token
-      GITHUB_REPO  = var.github_repo
-      DYNAMODB_TABLE_NAME = aws_dynamodb_table.conversations.name
-    }
-  }
-}
-
-resource "aws_lambda_function" "get_history" {
-  function_name    = "GetHistoryFunction"
-  filename         = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  role             = aws_iam_role.lambda_role.arn
-  handler          = "handlers.get_history_handler"
-  runtime          = "python3.9"
-  timeout          = 30
-  
-  environment {
-    variables = {
-      GITHUB_TOKEN = var.github_token
-      GITHUB_REPO  = var.github_repo
-    }
-  }
-}
-
-resource "aws_lambda_function" "get_resume" {
-  function_name    = "GetResumeFunction"
-  filename         = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  role             = aws_iam_role.lambda_role.arn
-  handler          = "handlers.get_resume_handler"
-  runtime          = "python3.9"
-  timeout          = 30
-  
-  environment {
-    variables = {
-      GITHUB_TOKEN = var.github_token
-      GITHUB_REPO  = var.github_repo
-    }
-  }
-}
-
-resource "aws_lambda_function" "save_resume" {
-  function_name    = "SaveResumeFunction"
-  filename         = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  role             = aws_iam_role.lambda_role.arn
-  handler          = "handlers.save_resume_handler"
-  runtime          = "python3.9"
-  timeout          = 60
-  
-  environment {
-    variables = {
-      GITHUB_TOKEN = var.github_token
-      GITHUB_REPO  = var.github_repo
-    }
-  }
-}
-
-# --- Container Lambda (PDF Compiler) ---
-# NOTE: User must push image to ECR first. 
-# For now, we point to a placeholder or assume 'latest' exists if they ran the script.
-resource "aws_lambda_function" "compile_pdf" {
-  function_name = "CompilePdfFunction"
-  role          = aws_iam_role.lambda_role.arn
-  package_type  = "Image"
-  image_uri     = "${aws_ecr_repository.resume_compiler.repository_url}:latest"
-  timeout       = 120
-  memory_size   = 2048
-
-  environment {
-    variables = {
-      PDF_BUCKET = aws_s3_bucket.pdf_bucket.id
-    }
-  }
-}
-
-
-# --- API Integrations ---
-
-resource "aws_apigatewayv2_integration" "compile_pdf" {
-  api_id           = aws_apigatewayv2_api.resume_api.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.compile_pdf.invoke_arn
-}
-
-resource "aws_apigatewayv2_integration" "get_history" {
-  api_id           = aws_apigatewayv2_api.resume_api.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.get_history.invoke_arn
-}
-
-resource "aws_apigatewayv2_integration" "get_resume" {
-  api_id           = aws_apigatewayv2_api.resume_api.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.get_resume.invoke_arn
-}
-
-resource "aws_apigatewayv2_integration" "save_resume" {
-  api_id           = aws_apigatewayv2_api.resume_api.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.save_resume.invoke_arn
-}
-
-
-# --- Lambda Permissions for API Gateway ---
-resource "aws_lambda_permission" "apigw_compile" {
-  statement_id  = "AllowAPIGatewayInvokeCompile"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.compile_pdf.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.resume_api.execution_arn}/*/*"
-}
-
-resource "aws_lambda_permission" "apigw_history" {
-  statement_id  = "AllowAPIGatewayInvokeHistory"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.get_history.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.resume_api.execution_arn}/*/*"
-}
-
-resource "aws_lambda_permission" "apigw_resume" {
-  statement_id  = "AllowAPIGatewayInvokeResume"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.get_resume.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.resume_api.execution_arn}/*/*"
-}
-
-resource "aws_lambda_permission" "apigw_save" {
-  statement_id  = "AllowAPIGatewayInvokeSave"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.save_resume.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.resume_api.execution_arn}/*/*"
-}
-
-
 ===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\terraform\main.tf =====
 terraform {
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-    archive = {
-      source  = "hashicorp/archive"
-      version = "~> 2.0"
-    }
+    aws = { source = "hashicorp/aws", version = "~> 5.0" }
   }
 }
 
 provider "aws" {
   region = var.aws_region
 }
-
-# Local variables for resource naming
-locals {
-  app_name = "resume-editor"
-  common_tags = {
-    Project   = "latex-resume"
-    ManagedBy = "Terraform"
-  }
-}
-
-
-===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\terraform\step_function.tf =====
-# --- IAM Role for Step Function ---
-resource "aws_iam_role" "sfn_role" {
-  name = "resume_sfn_role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "states.amazonaws.com"
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy" "sfn_policy" {
-  name = "resume_sfn_policy"
-  role = aws_iam_role.sfn_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "lambda:InvokeFunction"
-        ]
-        Resource = [
-          aws_lambda_function.fetch_resume.arn,
-          aws_lambda_function.generate_diff.arn,
-          aws_lambda_function.commit_update.arn
-        ]
-      }
-    ]
-  })
-}
-
-# --- Step Function ---
-resource "aws_sfn_state_machine" "resume_workflow" {
-  name     = "ResumeWorkflow"
-  role_arn = aws_iam_role.sfn_role.arn
-
-  definition = templatefile("${path.module}/../statemachine/resume_workflow.asl.json", {
-    FetchResumeFunctionArn   = aws_lambda_function.fetch_resume.arn
-    GenerateDiffFunctionArn  = aws_lambda_function.generate_diff.arn
-    CommitUpdateFunctionArn  = aws_lambda_function.commit_update.arn
-  })
-}
-
-# --- API Integration for Step Function ---
-resource "aws_apigatewayv2_integration" "step_function" {
-  api_id              = aws_apigatewayv2_api.resume_api.id
-  integration_type    = "AWS_PROXY"
-  integration_subtype = "StepFunctions-StartExecution"
-  credentials_arn     = aws_iam_role.apigw_sfn_role.arn
-  
-  request_parameters = {
-    "Input"         = "$request.body"
-    "StateMachineArn" = aws_sfn_state_machine.resume_workflow.arn
-  }
-}
-
-# Role for API Gateway to invoke Step Function
-resource "aws_iam_role" "apigw_sfn_role" {
-  name = "apigw_sfn_role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "apigateway.amazonaws.com"
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy" "apigw_sfn_policy" {
-  name = "apigw_sfn_policy"
-  role = aws_iam_role.apigw_sfn_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = "states:StartExecution"
-        Resource = aws_sfn_state_machine.resume_workflow.arn
-      }
-    ]
-  })
-}
-
 
 ===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\terraform\storage.tf =====
 # --- DynamoDB ---
@@ -8703,28 +7668,125 @@ export default function RootLayout({
 
 
 ===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\web\src\app\page.tsx =====
+'use client'; // Required for state and effects
+
+import { useState, useEffect } from 'react';
 import Dashboard from '@/components/Dashboard';
 
+// Configuration - Move to .env.local later
+const WAKE_UP_LAMBDA_URL = "YOUR_LAMBDA_FUNCTION_URL"; 
+const BACKEND_API_URL = "https://api.yourdomain.com";
+
+type BackendStatus = 'offline' | 'booting' | 'online';
+
 export default function Home() {
+  const [status, setStatus] = useState<BackendStatus>('offline');
+  const [loadingProgress, setLoadingProgress] = useState(0);
+
+  const checkStatus = async () => {
+    try {
+      const res = await fetch(`${BACKEND_API_URL}/health`, { method: 'GET' });
+      if (res.ok) setStatus('online');
+    } catch (e) {
+      // Backend is down/idle
+    }
+  };
+
+  const handleWakeUp = async () => {
+    setStatus('booting');
+    setLoadingProgress(10);
+    
+    try {
+      // 1. Trigger the starter pistol
+      await fetch(WAKE_UP_LAMBDA_URL, { method: 'POST' });
+      setLoadingProgress(30);
+
+      // 2. Poll every 3 seconds until DNS and SOCI lazy-loading are ready
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch(`${BACKEND_API_URL}/health`);
+          if (res.ok) {
+            setStatus('online');
+            clearInterval(interval);
+          } else {
+            setLoadingProgress((prev) => Math.min(prev + 5, 95));
+          }
+        } catch (err) {
+          setLoadingProgress((prev) => Math.min(prev + 2, 90));
+        }
+      }, 3000);
+
+    } catch (err) {
+      console.error("Failed to wake backend", err);
+      setStatus('offline');
+    }
+  };
+
+  // Check if backend is already warm on load
+  useEffect(() => {
+    checkStatus();
+  }, []);
+
   return (
-    <main className="h-screen bg-zinc-950 flex flex-col overflow-hidden">
+    <main className="h-screen bg-zinc-950 flex flex-col overflow-hidden relative">
+      {/* Header */}
       <div className="z-10 w-full flex items-center justify-between font-mono text-sm p-4 border-b border-zinc-900 bg-zinc-950">
         <div className="flex items-center gap-2">
           <span className="font-bold text-white text-lg tracking-tight">Agentic Resume Editor</span>
           <span className="px-2 py-0.5 bg-zinc-900 text-zinc-500 rounded text-xs border border-zinc-800">v2.0</span>
         </div>
-        <div className="text-zinc-600 text-xs">
-          Powered by Bedrock Qwen3 32B
+        <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${status === 'online' ? 'bg-emerald-500' : 'bg-zinc-700 animate-pulse'}`} />
+                <span className="text-zinc-500 text-xs uppercase tracking-widest">{status}</span>
+            </div>
+            <div className="text-zinc-600 text-xs italic">Powered by Bedrock Qwen3 32B</div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden">
-        <Dashboard />
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-hidden relative">
+        {status === 'online' ? (
+          <Dashboard />
+        ) : (
+          <div className="absolute inset-0 z-50 bg-zinc-950/80 backdrop-blur-sm flex flex-col items-center justify-center">
+            <div className="w-full max-w-md p-8 border border-zinc-900 bg-zinc-900/50 rounded-xl text-center space-y-6">
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold text-white">
+                  {status === 'offline' ? 'Backend Idle' : 'Initializing Phantom Backend'}
+                </h2>
+                <p className="text-zinc-500 text-sm">
+                  {status === 'offline' 
+                    ? 'The containerized LaTeX engine is currently sleeping to save costs.' 
+                    : 'Lazy-loading Docker layers via SOCI indexing...'}
+                </p>
+              </div>
+
+              {status === 'offline' ? (
+                <button 
+                  onClick={handleWakeUp}
+                  className="w-full py-3 bg-zinc-100 hover:bg-white text-zinc-950 font-bold rounded-lg transition-all active:scale-95"
+                >
+                  Wake Up System
+                </button>
+              ) : (
+                <div className="w-full space-y-2">
+                   <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-emerald-500 h-full transition-all duration-500 ease-out" 
+                        style={{ width: `${loadingProgress}%` }}
+                      />
+                   </div>
+                   <p className="text-[10px] font-mono text-zinc-600 animate-pulse">ESTABLISHING TUNNEL: {BACKEND_API_URL}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
 }
-
 
 ===== FILE: C:\Users\2439107\OneDrive - Cognizant\Desktop\LaTex\web\src\components\Dashboard.tsx =====
 'use client';

@@ -1,39 +1,27 @@
-# Stage 1: Build & Setup Tectonic
-FROM python:3.11-slim as base
+FROM oven/bun:1.1-slim
 
-# Install system dependencies for Tectonic and PDF processing
+# 1. Install system dependencies for Tectonic
 RUN apt-get update && apt-get install -y \
-    curl \
-    libfontconfig1 \
-    libgraphite2-3 \
-    libharfbuzz0b \
-    libicu-dev \
-    libssl-dev \
-    ca-certificates \
+    curl libfontconfig1 libgraphite2-3 libharfbuzz0b \
+    libicu-dev libssl-dev ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Tectonic (Fast LaTeX engine)
-RUN curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net |sh
-RUN mv tectonic /usr/local/bin/
+# 2. Install Tectonic (Fast LaTeX engine)
+RUN curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | sh \
+    && mv tectonic /usr/local/bin/
 
-# Set up working directory
 WORKDIR /app
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# 3. Bun dependencies
+COPY package.json bun.lockb ./
+RUN bun install --frozen-lockfile
 
-# Copy application source
+# 4. App Source
 COPY compute/ ./compute/
 COPY resume.tex .
 
-# --- CRITICAL: Warmup Tectonic Cache ---
-# We run Tectonic once during build so it downloads the base LaTeX packages.
-# This makes the "Cold Start" in Fargate 10x faster.
+# 5. Warmup: Run Tectonic during build to bake packages into layers
 RUN tectonic resume.tex && rm resume.pdf
 
-# Expose FastAPI port
 EXPOSE 8000
-
-# Start FastAPI with Uvicorn
-CMD ["python", "compute/main.py"]
+CMD ["bun", "compute/main.ts"]

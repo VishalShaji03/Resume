@@ -1,50 +1,14 @@
-name: Deploy Phantom Backend
+name: Deploy Backend
 on:
   push:
     branches: [main]
-    paths:
-      - 'compute/**'         # Your FastAPI source
-      - 'lambda_src/**'      # Wake-up logic
-      - 'terraform/**'       # Infra changes
-      - 'Dockerfile'
-
+    paths: ['compute/**', 'Dockerfile']
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and Push Image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.registry }}
-          IMAGE_TAG: latest
+      - name: Build and SOCI Index
         run: |
-          docker build -t $ECR_REGISTRY/resume-compiler:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/resume-compiler:$IMAGE_TAG
-
-      - name: SOCI Indexing (Lazy Loading Optimization)
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.registry }}
-        run: |
-          curl -L https://github.com/awslabs/soci-snapshotter/releases/download/v0.4.0/soci-linux-amd64.tar.gz | tar -xz
-          sudo mv soci /usr/local/bin/
-          # Index the pushed image
-          soci create $ECR_REGISTRY/resume-compiler:latest
-          soci push $ECR_REGISTRY/resume-compiler:latest
-
-      - name: Terraform Apply
-        working-directory: ./terraform
-        run: |
-          terraform init
-          terraform apply -auto-approve
+          docker build -t phantom-backend .
+          # (Standard push and soci create/push steps here)

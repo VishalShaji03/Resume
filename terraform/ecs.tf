@@ -1,52 +1,29 @@
-resource "aws_ecs_cluster" "phantom_cluster" {
-  name = "resume-phantom-cluster"
-  
-  # Enable SOCI Indexing support (Managed by Fargate)
-  setting {
-    name  = "containerInsights"
-    value = "enabled"
-  }
-}
+resource "aws_ecs_cluster" "main" { name = "phantom-cluster" }
 
-resource "aws_ecs_cluster_capacity_providers" "phantom_cp" {
-  cluster_name = aws_ecs_cluster.phantom_cluster.name
+resource "aws_ecs_cluster_capacity_providers" "spot" {
+  cluster_name = aws_ecs_cluster.main.name
   capacity_providers = ["FARGATE_SPOT"]
-
-  default_capacity_provider_strategy {
-    capacity_provider = "FARGATE_SPOT"
-    weight            = 1
-  }
+  default_capacity_provider_strategy { capacity_provider = "FARGATE_SPOT", weight = 1 }
 }
 
-resource "aws_ecs_task_definition" "resume_task" {
-  family                   = "resume-phantom-task"
+resource "aws_ecs_task_definition" "app" {
+  family                   = "phantom-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = 512
   memory                   = 1024
-  execution_role_arn       = aws_iam_role.ecs_exec_role.arn
-  task_role_arn            = aws_iam_role.fargate_task_role.arn
+  execution_role_arn       = aws_iam_role.execution.arn
+  task_role_arn            = aws_iam_role.task.arn
 
   container_definitions = jsonencode([{
-    name  = "resume-api"
-    image = "${aws_ecr_repository.resume_compiler.repository_url}:latest"
+    name  = "backend"
+    image = "YOUR_ECR_URL:latest"
     portMappings = [{ containerPort = 8000 }]
     environment = [
-      { name = "HOSTED_ZONE_ID", value = var.hosted_zone_id },
-      { name = "STATE_BUCKET",   value = aws_s3_bucket.state_bucket.id }
+      { name = "CF_ZONE_ID",   value = var.cf_zone_id },
+      { name = "CF_RECORD_ID", value = var.cf_record_id },
+      { name = "CF_API_TOKEN", value = var.cf_api_token },
+      { name = "CLUSTER_NAME", value = "phantom-cluster" }
     ]
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        "awslogs-group"         = "/ecs/resume-phantom"
-        "awslogs-region"        = var.aws_region
-        "awslogs-stream-prefix" = "ecs"
-      }
-    }
   }])
-}
-
-resource "aws_cloudwatch_log_group" "ecs_logs" {
-  name              = "/ecs/resume-phantom"
-  retention_in_days = 7
 }

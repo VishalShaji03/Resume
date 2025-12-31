@@ -1,18 +1,26 @@
 import boto3
+import os
 
 def handler(event, context):
     ecs = boto3.client('ecs')
-    # Check if task is already running to avoid duplicates
-    tasks = ecs.list_tasks(cluster='resume-cluster', serviceName='resume-service')
+    cluster = os.environ['CLUSTER_NAME']
     
-    if not tasks['taskArns']:
-        ecs.run_task(
-            cluster='resume-cluster',
-            launchType='FARGATE',
-            taskDefinition='resume-task',
-            count=1,
-            capacityProviderStrategy=[{'capacityProvider': 'FARGATE_SPOT', 'weight': 1}]
-        )
-        return {"status": "starting", "message": "Phantom Backend is waking up..."}
+    # Check if task is already running
+    active = ecs.list_tasks(cluster=cluster, desiredStatus='RUNNING')
+    if active['taskArns']:
+        return {"status": "ready", "message": "Backend is already warm."}
     
-    return {"status": "running", "message": "Backend is already warm."}
+    # Fire the starter pistol (FARGATE_SPOT)
+    ecs.run_task(
+        cluster=cluster,
+        taskDefinition=os.environ['TASK_DEFINITION'],
+        launchType='FARGATE',
+        capacityProviderStrategy=[{'capacityProvider': 'FARGATE_SPOT', 'weight': 1}],
+        networkConfiguration={
+            'awsvpcConfiguration': {
+                'subnets': os.environ['SUBNETS'].split(','),
+                'assignPublicIp': 'ENABLED'
+            }
+        }
+    )
+    return {"status": "booting", "message": "Phantom Backend is waking up..."}

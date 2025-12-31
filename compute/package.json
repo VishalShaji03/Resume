@@ -1,0 +1,10 @@
+{
+  "name": "phantom-backend",
+  "dependencies": {
+    "elysia": "latest",
+    "@elysiajs/cors": "latest",
+    "@aws-sdk/client-ecs": "^3.0.0",
+    "@aws-sdk/client-s3": "^3.0.0"
+  },
+  "devDependencies": { "bun-types": "latest" }
+}
