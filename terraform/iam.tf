@@ -10,7 +10,9 @@ resource "aws_iam_role_policy" "perms" {
   policy = jsonencode({
     Version = "2012-10-17", Statement = [
       { Action = ["ecs:StopTask"], Effect = "Allow", Resource = "*" },
-      { Action = ["s3:PutObject", "s3:GetObject"], Effect = "Allow", Resource = "*" }
+      { Action = ["s3:PutObject", "s3:GetObject"], Effect = "Allow", Resource = "*" },
+      { Action = ["bedrock:InvokeModel"], Effect = "Allow", Resource = "*" },
+      { Action = ["dynamodb:GetItem", "dynamodb:UpdateItem"], Effect = "Allow", Resource = "arn:aws:dynamodb:*:*:table/DailySpend" }
     ]
   })
 }

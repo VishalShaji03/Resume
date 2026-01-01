@@ -6,6 +6,12 @@ resource "aws_ecs_cluster_capacity_providers" "spot" {
   default_capacity_provider_strategy { capacity_provider = "FARGATE_SPOT", weight = 1 }
 }
 
+resource "aws_ecr_repository" "repo" {
+  name                 = "phantom-backend"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+}
+
 resource "aws_ecs_task_definition" "app" {
   family                   = "phantom-task"
   network_mode             = "awsvpc"
@@ -17,7 +23,7 @@ resource "aws_ecs_task_definition" "app" {
 
   container_definitions = jsonencode([{
     name  = "backend"
-    image = "YOUR_ECR_URL:latest"
+    image = "${aws_ecr_repository.repo.repository_url}:latest"
     portMappings = [{ containerPort = 8000 }]
     environment = [
       { name = "CF_ZONE_ID",   value = var.cf_zone_id },
@@ -25,5 +31,18 @@ resource "aws_ecs_task_definition" "app" {
       { name = "CF_API_TOKEN", value = var.cf_api_token },
       { name = "CLUSTER_NAME", value = "phantom-cluster" }
     ]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = "/ecs/phantom-task"
+        "awslogs-region"        = var.aws_region
+        "awslogs-stream-prefix" = "ecs"
+      }
+    }
   }])
+}
+
+resource "aws_cloudwatch_log_group" "logs" {
+  name              = "/ecs/phantom-task"
+  retention_in_days = 7
 }
