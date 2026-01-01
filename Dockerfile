@@ -13,7 +13,7 @@ RUN curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | s
 WORKDIR /app
 
 # 3. Bun dependencies
-COPY package.json bun.lockb ./
+COPY compute/package.json compute/bun.lockb ./
 RUN bun install --frozen-lockfile
 
 # 4. App Source
