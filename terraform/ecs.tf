@@ -1,9 +1,14 @@
-resource "aws_ecs_cluster" "main" { name = "phantom-cluster" }
+resource "aws_ecs_cluster" "main" {
+  name = "phantom-cluster"
+}
 
 resource "aws_ecs_cluster_capacity_providers" "spot" {
   cluster_name = aws_ecs_cluster.main.name
   capacity_providers = ["FARGATE_SPOT"]
-  default_capacity_provider_strategy { capacity_provider = "FARGATE_SPOT", weight = 1 }
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 1
+  }
 }
 
 resource "aws_ecr_repository" "repo" {
@@ -29,6 +34,9 @@ resource "aws_ecs_task_definition" "app" {
       { name = "CF_ZONE_ID",   value = var.cf_zone_id },
       { name = "CF_RECORD_ID", value = var.cf_record_id },
       { name = "CF_API_TOKEN", value = var.cf_api_token },
+      { name = "GITHUB_TOKEN", value = var.github_token },
+      { name = "REPO_OWNER",   value = var.repo_owner },
+      { name = "REPO_NAME",    value = var.repo_name },
       { name = "CLUSTER_NAME", value = "phantom-cluster" }
     ]
     logConfiguration = {

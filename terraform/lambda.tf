@@ -15,27 +15,29 @@ resource "aws_iam_role_policy" "wakeup_policy" {
   role = aws_iam_role.wakeup_role.id
   policy = jsonencode({
     Version = "2012-10-17", Statement = [
-      { Action = ["ecs:RunTask", "ecs:ListTasks"], Effect = "Allow", Resource = "*" },
-      { Action = ["iam:PassRole"], Effect = "Allow", Resource = "*" }, # Needed to pass role to ECS Task
+      { Action = ["ecs:RunTask", "ecs:ListTasks", "ecs:DescribeTasks"], Effect = "Allow", Resource = "*" },
+      { Action = ["ec2:DescribeNetworkInterfaces"], Effect = "Allow", Resource = "*" },
+      { Action = ["dynamodb:GetItem"], Effect = "Allow", Resource = "arn:aws:dynamodb:*:*:table/DailySpend" },
+      { Action = ["iam:PassRole"], Effect = "Allow", Resource = "*" },
       { Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"], Effect = "Allow", Resource = "*" }
     ]
   })
 }
 
 resource "aws_lambda_function" "wakeup" {
-  function_name = "phantom-wakeup"
-  role          = aws_iam_role.wakeup_role.arn
-  handler       = "wake_up.handler"
-  runtime       = "python3.12"
-  filename      = data.archive_file.wakeup_zip.output_path
+  function_name    = "phantom-wakeup"
+  role             = aws_iam_role.wakeup_role.arn
+  handler          = "wake_up.handler"
+  runtime          = "python3.12"
+  filename         = data.archive_file.wakeup_zip.output_path
   source_code_hash = data.archive_file.wakeup_zip.output_base64sha256
-  timeout       = 30
+  timeout          = 30
 
   environment {
     variables = {
       CLUSTER_NAME    = aws_ecs_cluster.main.name
-      TASK_DEFINITION = aws_ecs_task_definition.app.family # Using family uses latest LATEST revision
-      SUBNETS         = join(",", data.aws_subnets.default.ids) # We need to get default subnets
+      TASK_DEFINITION = aws_ecs_task_definition.app.family
+      SUBNETS         = join(",", data.aws_subnets.default.ids)
     }
   }
 }
@@ -49,10 +51,16 @@ resource "aws_lambda_function_url" "wakeup_url" {
   }
 }
 
-# Data source for default VPC subnets (assuming we run in default VPC)
-data "aws_vpc" "default" { default = true }
+# Data source for default VPC subnets
+data "aws_vpc" "default_vpc" {
+  default = true
+}
+
 data "aws_subnets" "default" {
-  filter { name = "vpc-id", values = [data.aws_vpc.default.id] }
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default_vpc.id]
+  }
 }
 
 output "wake_up_url" {

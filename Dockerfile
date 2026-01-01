@@ -3,7 +3,7 @@ FROM oven/bun:1.1-slim
 # 1. Install system dependencies for Tectonic
 RUN apt-get update && apt-get install -y \
     curl libfontconfig1 libgraphite2-3 libharfbuzz0b \
-    libicu-dev libssl-dev ca-certificates \
+    libicu-dev libssl-dev ca-certificates git \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Install Tectonic (Fast LaTeX engine)

@@ -12,7 +12,7 @@ const ecs = new ECSClient({ region: "us-east-1" });
 const db = new DynamoDBClient({ region: "us-east-1" });
 const bedrock = new BedrockRuntimeClient({ region: "us-east-1" });
 
-const SPEND_LIMIT = 1.00; // $1.00 USD
+const SPEND_LIMIT = 0.50; // $0.50 USD
 
 // 1. Cloudflare DNS Self-Announcement
 const syncDNS = async () => {
@@ -51,8 +51,17 @@ async function logSpend(cost: number) {
   }));
 }
 
-// 2. Self-Destruct Timer
+// Cost Constants (USD)
+const COST_PER_MIN_ECS = 0.00005; // Fargate Spot (0.25 vCPU, 0.5GB)
+const COST_IN_TOKENS = 0.00000265; // Llama 3 70B Input
+const COST_OUT_TOKENS = 0.0000035; // Llama 3 70B Output
+
+// 2. Runtime Cost Meter (Every minute)
 setInterval(async () => {
+  try {
+    await logSpend(COST_PER_MIN_ECS);
+  } catch (e) { console.error("Failed to log runtime cost", e); } // Don't crash on logging fail
+
   if (Date.now() - lastActivity > IDLE_TIMEOUT) {
     console.log("Idle timeout reached. Shutting down...");
     const meta = await fetch("http://169.254.170.2/v2/metadata").then(r => r.json());
@@ -78,6 +87,13 @@ new Elysia()
   .post("/save", async ({ body }: any) => {
     if (!body.latex) return { error: "No latex content provided" };
     await Bun.write("resume.tex", body.latex);
+
+    if (body.commit !== false) {
+      try {
+        await commitToGit(body.message || "Manual Update");
+      } catch (e) { console.error("Git Push Failed:", e); }
+    }
+
     return { status: "saved" };
   })
 
@@ -140,13 +156,19 @@ Return ONLY raw JSON.
       })
     }));
 
-    await logSpend(0.005); // Log ~$0.005 per call
+    // 4. Calculate & Log Exact Cost
+    // Headers handle token counts for Llama models on Bedrock
+    const inputTokens = parseInt(response.headers["x-amzn-bedrock-input-token-count"] || "0");
+    const outputTokens = parseInt(response.headers["x-amzn-bedrock-output-token-count"] || "0");
+    const callCost = (inputTokens * COST_IN_TOKENS) + (outputTokens * COST_OUT_TOKENS);
+
+    await logSpend(callCost);
 
     const responseBody = new TextDecoder().decode(response.body);
     const result = JSON.parse(responseBody);
     const generatedText = result.generation || result.completion || "";
 
-    // 4. Parse JSON from LLM
+    // 5. Parse JSON from LLM
     const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       set.status = 500;
@@ -162,14 +184,14 @@ Return ONLY raw JSON.
       return { error: "Invalid JSON from AI" };
     }
 
-    // 5. Apply Patches
+    // 6. Apply Patches
     patches.forEach((p: any) => {
       // Simple string replace
       tex = tex.replace(p.search, p.replace);
     });
     await Bun.write("resume.tex", tex);
 
-    // 6. Compile PDF
+    // 7. Compile PDF
     const proc = Bun.spawn(["tectonic", "resume.tex"]);
     await proc.exited;
 
@@ -178,9 +200,44 @@ Return ONLY raw JSON.
       return { error: "LaTeX compilation failed" };
     }
 
+    // 8. Commit to Git
+    // 8. Commit to Git (Optional)
+    if (body.commit !== false) {
+      try {
+        await commitToGit(`AI Update: ${instruction.slice(0, 50)}...`);
+      } catch (e) {
+        console.error("Git Push Failed:", e);
+      }
+    }
+
     return new Response(Bun.file("resume.pdf"));
   })
   .listen(8000);
+
+// Git Helper
+async function commitToGit(msg: string) {
+  if (!process.env.GITHUB_TOKEN) return;
+
+  const remote = `https://${process.env.GITHUB_TOKEN}@github.com/${process.env.REPO_OWNER}/${process.env.REPO_NAME}.git`;
+
+  // Configure if not already (redundant but safe)
+  Bun.spawnSync(["git", "config", "user.email", "phantom@ai"]);
+  Bun.spawnSync(["git", "config", "user.name", "Ghost Writer"]);
+
+  // Check if remote exists, remove to be safe, set new
+  Bun.spawnSync(["git", "remote", "remove", "origin"]);
+  Bun.spawnSync(["git", "remote", "add", "origin", remote]);
+
+  // Add, Commit, Push
+  Bun.spawnSync(["git", "add", "resume.tex"]);
+  Bun.spawnSync(["git", "commit", "-m", msg]);
+
+  const push = Bun.spawnSync(["git", "push", "--set-upstream", "origin", "main"]);
+  if (push.exitCode !== 0) {
+    throw new Error(new TextDecoder().decode(push.stderr));
+  }
+  console.log("Git Pushed Successfully");
+}
 
 syncDNS();
 console.log("Phantom Backend Listening on 8000");

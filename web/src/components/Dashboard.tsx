@@ -6,7 +6,11 @@ import ResumeEditor from './ResumeEditor';
 import PdfPreview from './PdfPreview';
 import HistorySlider from './HistorySlider';
 
-export default function Dashboard() {
+interface DashboardProps {
+    apiUrl: string;
+}
+
+export default function Dashboard({ apiUrl }: DashboardProps) {
     const [activeTab, setActiveTab] = useState<'ai' | 'manual'>('ai');
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
     const [editorKey, setEditorKey] = useState(0); // Used to force-reload editor
@@ -36,8 +40,8 @@ export default function Dashboard() {
                     <button
                         onClick={() => setActiveTab('ai')}
                         className={`px-4 py-2 text-sm rounded-md transition-all ${activeTab === 'ai'
-                                ? 'bg-zinc-800 text-white shadow'
-                                : 'text-zinc-400 hover:text-white'
+                            ? 'bg-zinc-800 text-white shadow'
+                            : 'text-zinc-400 hover:text-white'
                             }`}
                     >
                         AI Assistant
@@ -45,8 +49,8 @@ export default function Dashboard() {
                     <button
                         onClick={() => setActiveTab('manual')}
                         className={`px-4 py-2 text-sm rounded-md transition-all ${activeTab === 'manual'
-                                ? 'bg-zinc-800 text-white shadow'
-                                : 'text-zinc-400 hover:text-white'
+                            ? 'bg-zinc-800 text-white shadow'
+                            : 'text-zinc-400 hover:text-white'
                             }`}
                     >
                         Manual Editor
@@ -63,13 +67,14 @@ export default function Dashboard() {
                                     Describe changes or paste a Job Description. The AI will rewrite your LaTeX resume.
                                 </p>
                             </div>
-                            <ResumeForm onSuccess={handleAiSuccess} />
+                            <ResumeForm onSuccess={handleAiSuccess} apiUrl={apiUrl} />
                         </div>
                     ) : (
                         <div className="h-full animate-in fade-in slide-in-from-right-4 duration-300">
                             <ResumeEditor
                                 key={editorKey}
                                 onPreviewUpdate={handlePreviewUpdate}
+                                apiUrl={apiUrl}
                             />
                         </div>
                     )}

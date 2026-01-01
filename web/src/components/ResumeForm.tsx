@@ -5,12 +5,14 @@ import { updateResume } from '@/lib/api';
 
 interface ResumeFormProps {
     onSuccess?: () => void;
+    apiUrl: string;
 }
 
-export default function ResumeForm({ onSuccess }: ResumeFormProps) {
+export default function ResumeForm({ onSuccess, apiUrl }: ResumeFormProps) {
     const [instruction, setInstruction] = useState('');
     const [jobDescription, setJobDescription] = useState('');
     const [showJD, setShowJD] = useState(false);
+    const [commit, setCommit] = useState(true);
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [message, setMessage] = useState('');
 
@@ -22,7 +24,7 @@ export default function ResumeForm({ onSuccess }: ResumeFormProps) {
         setMessage('');
 
         try {
-            const result = await updateResume(instruction, jobDescription);
+            const result = await updateResume(instruction, jobDescription, apiUrl, commit);
             setStatus('success');
             setMessage(`Success! Update started. Conversation ID: ${result.conversation_id}`);
             setInstruction('');
@@ -63,6 +65,16 @@ export default function ResumeForm({ onSuccess }: ResumeFormProps) {
                     >
                         {showJD ? '- Remove Job Description' : '+ Add Job Description (Auto-Tailor)'}
                     </button>
+
+                    <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={commit}
+                            onChange={(e) => setCommit(e.target.checked)}
+                            className="rounded border-zinc-700 bg-zinc-800 text-white"
+                        />
+                        Commit to Git
+                    </label>
 
                     <button
                         type="submit"

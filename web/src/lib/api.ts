@@ -4,19 +4,24 @@ export interface UpdateResponse {
     conversation_id: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://hm1hqg1g20.execute-api.us-east-1.amazonaws.com/prod';
+// Removed static API_URL
 
-export async function updateResume(instruction: string, job_description?: string): Promise<UpdateResponse> {
-    if (!API_URL) {
-        throw new Error('API URL not configured');
+export async function updateResume(
+    instruction: string,
+    job_description: string | undefined,
+    baseUrl: string,
+    commit: boolean = true
+): Promise<UpdateResponse> {
+    if (!baseUrl) {
+        throw new Error('API URL not provided');
     }
 
-    const response = await fetch(`${API_URL}/update`, {
+    const response = await fetch(`${baseUrl}/update`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ instruction, job_description }),
+        body: JSON.stringify({ instruction, job_description, commit }),
     });
 
     if (!response.ok) {
@@ -25,3 +30,4 @@ export async function updateResume(instruction: string, job_description?: string
 
     return response.json();
 }
+

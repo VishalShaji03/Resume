@@ -4,20 +4,20 @@ import { useState, useEffect } from 'react';
 
 interface ResumeEditorProps {
     onPreviewUpdate: (url: string) => void;
+    apiUrl: string;
 }
 
-export default function ResumeEditor({ onPreviewUpdate }: ResumeEditorProps) {
+export default function ResumeEditor({ onPreviewUpdate, apiUrl }: ResumeEditorProps) {
     const [latex, setLatex] = useState('');
     const [status, setStatus] = useState<'idle' | 'loading' | 'saving' | 'compiling'>('idle');
 
     useEffect(() => {
         // Fetch current resume on mount
         async function fetchResume() {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/update', '/resume');
             if (!apiUrl) return;
 
             try {
-                const res = await fetch(apiUrl);
+                const res = await fetch(`${apiUrl}/resume`);
                 if (res.ok) {
                     const text = await res.text();
                     setLatex(text);
@@ -27,21 +27,28 @@ export default function ResumeEditor({ onPreviewUpdate }: ResumeEditorProps) {
             }
         }
         fetchResume();
-    }, []);
+    }, [apiUrl]);
 
     const handleCompile = async () => {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/update', '/preview');
         if (!apiUrl) return;
 
         setStatus('compiling');
         try {
-            const res = await fetch(apiUrl, {
+            const res = await fetch(`${apiUrl}/preview`, {
                 method: 'POST',
                 body: JSON.stringify({ latex })
             });
             if (res.ok) {
-                const data = await res.json();
-                onPreviewUpdate(data.url);
+                const data = await res.json(); // Assuming preview returns { url: ... } or raw PDF blob? 
+                // Wait, compute/main.ts returns a Response(file). So it's a blob.
+                // We need to handle blob URL creation here if main.ts returns raw PDF.
+                // Let's assume for now api returns object for consistency or we adjust main.ts.
+
+                // ADJUSTMENT: main.ts returns `new Response(file)`. That is a BLOB.
+                // We need to create object URL.
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                onPreviewUpdate(url);
             }
         } catch (e) {
             console.error(e);
@@ -51,12 +58,11 @@ export default function ResumeEditor({ onPreviewUpdate }: ResumeEditorProps) {
     };
 
     const handleSave = async () => {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/update', '/save');
         if (!apiUrl) return;
 
         setStatus('saving');
         try {
-            const res = await fetch(apiUrl, {
+            const res = await fetch(`${apiUrl}/save`, {
                 method: 'POST',
                 body: JSON.stringify({ latex, message: 'Manual update via Editor' })
             });

@@ -5,8 +5,3 @@ terraform {
 }
 
 provider "aws" { region = var.aws_region }
-
-variable "aws_region" { default = "us-east-1" }
-variable "zone_id"     { } # Route 53 Zone ID
-variable "api_domain"  { default = "api.yourdomain.com" }
-variable "app_name"    { default = "resume-phantom" }
