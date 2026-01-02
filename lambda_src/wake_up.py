@@ -3,9 +3,27 @@ import os
 import datetime
 import json
 
+# Set this to match your backend's spend logic
 SPEND_LIMIT = 0.50 
 
+def create_response(status_code, body):
+    """Helper to return consistent CORS-enabled responses for Vercel."""
+    return {
+        "statusCode": status_code,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*", # Ideally your Vercel domain
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type"
+        },
+        "body": json.dumps(body)
+    }
+
 def handler(event, context):
+    # Handle preflight OPTIONS request
+    if event.get('httpMethod') == 'OPTIONS':
+        return create_response(200, {})
+
     ecs = boto3.client('ecs')
     ec2 = boto3.client('ec2')
     dynamodb = boto3.client('dynamodb')
@@ -14,30 +32,30 @@ def handler(event, context):
     task_def = os.environ['TASK_DEFINITION']
     subnets = os.environ['SUBNETS'].split(',')
 
-    # 1. Budget Check
+    # 1. Budget Guard (Fail Fast)
     today = datetime.date.today().isoformat()
     try:
         current = dynamodb.get_item(TableName="DailySpend", Key={'date': {'S': today}})
         total_str = current.get('Item', {}).get('total', {}).get('N', "0")
         if float(total_str) >= SPEND_LIMIT:
-             return {"status": "error", "message": "Daily Budget Exceeded."}
+             return create_response(402, {"status": "error", "message": "Daily Budget Exceeded."})
     except Exception as e:
-        print(f"Budget check failed: {e}")
-        return {"status": "error", "message": "Cost Guard Error."}
+        print(f"Spend Check Error: {e}")
+        return create_response(500, {"status": "error", "message": "Spend Guard Failure."})
     
-    # 2. Check for PENDING or RUNNING tasks (Fixes the duplicate task bug)
-    # We check for all non-stopped tasks
+    # 2. Check for PENDING or RUNNING tasks
+    # This prevents duplicate launches if the user double-clicks the wake button
     active = ecs.list_tasks(cluster=cluster, desiredStatus='RUNNING')
     pending = ecs.list_tasks(cluster=cluster, desiredStatus='PENDING')
     task_arns = active.get('taskArns', []) + pending.get('taskArns', [])
 
     if not task_arns:
-        print("Starting new task...")
+        print("Starting new Fargate Spot task...")
         try:
             ecs.run_task(
                 cluster=cluster,
                 taskDefinition=task_def,
-                platformVersion='1.4.0', # Required for SOCI
+                platformVersion='1.4.0', # Explicitly required for SOCI lazy-loading
                 capacityProviderStrategy=[{'capacityProvider': 'FARGATE_SPOT', 'weight': 1}],
                 networkConfiguration={
                     'awsvpcConfiguration': {
@@ -46,34 +64,35 @@ def handler(event, context):
                     }
                 }
             )
-            return {"status": "booting", "message": "Igniting Resume Engine... Check back in 15s."}
+            return create_response(202, {"status": "booting", "message": "Igniting Resume Engine..."})
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return create_response(500, {"status": "error", "message": str(e)})
 
-    # 3. Get Network Info
+    # 3. Task Status Investigation
     desc_tasks = ecs.describe_tasks(cluster=cluster, tasks=[task_arns[0]])
     task = desc_tasks['tasks'][0]
     last_status = task.get('lastStatus')
     
-    # Find ENI
+    # 4. Extract the Elastic Network Interface (ENI) ID
     eni_id = next((d['value'] for att in task.get('attachments', []) 
                    for d in att['details'] if d['name'] == 'networkInterfaceId'), None)
     
+    # If the task isn't 'RUNNING' yet, the ENI or Public IP might not be ready
     if not eni_id or last_status != 'RUNNING':
-        return {"status": "booting", "message": f"Task is {last_status}..."}
+        return create_response(200, {"status": "booting", "message": f"Task is {last_status}..."})
 
-    # 4. Extract Public IP
+    # 5. Extract the Public IP from the EC2 Network Interface
     try:
         eni_desc = ec2.describe_network_interfaces(NetworkInterfaceIds=[eni_id])
         public_ip = eni_desc['NetworkInterfaces'][0].get('Association', {}).get('PublicIp')
         
         if public_ip:
-            return {
+            return create_response(200, {
                 "status": "ready",
                 "ip": public_ip,
                 "url": f"http://{public_ip}:8000"
-            }
+            })
     except Exception as e:
-        print(f"Network interface not ready: {e}")
+        print(f"IP Discovery Error: {e}")
 
-    return {"status": "booting", "message": "Finalizing network routes..."}
+    return create_response(200, {"status": "booting", "message": "Finalizing network..."})
