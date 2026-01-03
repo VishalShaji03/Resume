@@ -31,10 +31,11 @@ resource "aws_ecs_task_definition" "app" {
     image = "${aws_ecr_repository.repo.repository_url}:latest"
     portMappings = [{ containerPort = 8000 }]
     environment = [
-      { name = "GITHUB_TOKEN",     value = var.github_token },
-      { name = "REPO_OWNER",       value = var.repo_owner },
-      { name = "REPO_NAME",        value = var.repo_name },
-      { name = "CLUSTER_NAME",     value = aws_ecs_cluster.main.name }
+      { name = "GITHUB_TOKEN",            value = var.github_token },
+      { name = "REPO_OWNER",              value = var.repo_owner },
+      { name = "REPO_NAME",               value = var.repo_name },
+      { name = "CLUSTER_NAME",            value = aws_ecs_cluster.main.name },
+      { name = "CLOUDFLARE_TUNNEL_TOKEN", value = var.cloudflare_tunnel_token }
     ]
     logConfiguration = {
       logDriver = "awslogs"

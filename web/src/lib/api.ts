@@ -18,18 +18,13 @@ export interface CommitResponse {
     error?: string;
 }
 
+// Same-origin API calls - no proxy needed
 export async function updateResume(
     instruction: string,
     job_description: string | undefined,
     baseUrl: string
 ): Promise<UpdateResponse> {
-    if (!baseUrl) throw new Error('API URL not provided');
-
-    // Proxy: Update (returns JSON now)
-    const targetUrl = `${baseUrl}/update`;
-    const proxyUrl = `/api/proxy?target=${encodeURIComponent(targetUrl)}`;
-
-    const response = await fetch(proxyUrl, {
+    const response = await fetch(`${baseUrl}/update`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -37,7 +32,7 @@ export async function updateResume(
         body: JSON.stringify({
             instruction,
             job_description,
-            commit: false // Never auto-commit from AI anymore
+            commit: false
         }),
     });
 
@@ -46,7 +41,6 @@ export async function updateResume(
         return response.json();
     } else {
         const text = await response.text();
-        // If it's a 500 with text, throw it so UI shows it
         throw new Error(text || `API Error: ${response.statusText}`);
     }
 }
@@ -55,12 +49,7 @@ export async function commitChanges(
     message: string,
     baseUrl: string
 ): Promise<CommitResponse> {
-    if (!baseUrl) throw new Error('API URL not provided');
-
-    const targetUrl = `${baseUrl}/commit`;
-    const proxyUrl = `/api/proxy?target=${encodeURIComponent(targetUrl)}`;
-
-    const response = await fetch(proxyUrl, {
+    const response = await fetch(`${baseUrl}/commit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message })
@@ -70,13 +59,8 @@ export async function commitChanges(
 }
 
 export async function getHistory(baseUrl: string): Promise<Commit[]> {
-    if (!baseUrl) return [];
-
-    const targetUrl = `${baseUrl}/history`;
-    const proxyUrl = `/api/proxy?target=${encodeURIComponent(targetUrl)}`;
-
     try {
-        const response = await fetch(proxyUrl);
+        const response = await fetch(`${baseUrl}/history`);
         if (response.ok) {
             return response.json();
         }

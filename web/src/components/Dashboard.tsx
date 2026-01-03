@@ -18,21 +18,16 @@ export default function Dashboard({ apiUrl }: DashboardProps) {
     const [latex, setLatex] = useState('');
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
-    // Auto-fetch PDF and LaTeX on mount
+    // Auto-fetch PDF and LaTeX on mount (same-origin API)
     useEffect(() => {
-        if (!apiUrl) return;
-
-        // Fetch PDF for preview
-        const pdfTarget = `${apiUrl}/pdf`;
-        const pdfProxyUrl = `/api/proxy?target=${encodeURIComponent(pdfTarget)}`;
-        fetch(pdfProxyUrl).then(res => {
-            if (res.ok) setPdfUrl(pdfProxyUrl);
+        // Fetch PDF for preview (direct same-origin call)
+        const pdfUrl = `${apiUrl}/pdf`;
+        fetch(pdfUrl).then(res => {
+            if (res.ok) setPdfUrl(pdfUrl);
         }).catch(console.error);
 
         // Fetch LaTeX source for the manual editor
-        const latexTarget = `${apiUrl}/resume`;
-        const latexProxyUrl = `/api/proxy?target=${encodeURIComponent(latexTarget)}`;
-        fetch(latexProxyUrl).then(res => {
+        fetch(`${apiUrl}/resume`).then(res => {
             if (res.ok) return res.text();
             return null;
         }).then(text => {

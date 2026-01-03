@@ -13,13 +13,10 @@ export default function ResumeEditor({ latex, setLatex, onPreviewUpdate, apiUrl 
     const [status, setStatus] = useState<'idle' | 'loading' | 'saving' | 'compiling'>('idle');
 
     const handleCompile = async () => {
-        if (!apiUrl) return;
-
         setStatus('compiling');
         try {
-            // Proxy: Compile/Preview
-            const target = `${apiUrl}/preview`;
-            const res = await fetch(`/api/proxy?target=${encodeURIComponent(target)}`, {
+            // Direct same-origin API call
+            const res = await fetch(`${apiUrl}/preview`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ latex })
@@ -47,9 +44,8 @@ export default function ResumeEditor({ latex, setLatex, onPreviewUpdate, apiUrl 
 
         setStatus('saving');
         try {
-            // Proxy: Save using POST /save (filesystem only, no commit)
-            const target = `${apiUrl}/save`;
-            const res = await fetch(`/api/proxy?target=${encodeURIComponent(target)}`, {
+            // Direct same-origin API call
+            const res = await fetch(`${apiUrl}/save`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ latex })

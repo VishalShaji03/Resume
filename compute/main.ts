@@ -1,5 +1,6 @@
 import { Elysia } from 'elysia';
 import { cors } from '@elysiajs/cors';
+import { staticPlugin } from '@elysiajs/static';
 import { ECSClient, StopTaskCommand } from "@aws-sdk/client-ecs";
 import { DynamoDBClient, GetItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
@@ -20,32 +21,7 @@ const ecs = new ECSClient({ region: "us-east-1" });
 const db = new DynamoDBClient({ region: "us-east-1" });
 const bedrock = new BedrockRuntimeClient({ region: "us-east-1" });
 
-/**
- * 1. VERCEL DNS SYNC
- */
-const syncDNS = async () => {
-    if (!process.env.VERCEL_RECORD_ID || !process.env.VERCEL_API_TOKEN) {
-        console.log("[DNS] Skipped - No custom domain configured");
-        return;
-    }
-
-    try {
-        const ip = (await fetch('https://checkip.amazonaws.com').then(r => r.text())).trim();
-        const response = await fetch(`https://api.vercel.com/v1/domains/records/${process.env.VERCEL_RECORD_ID}`, {
-            method: 'PATCH',
-            headers: {
-                'Authorization': `Bearer ${process.env.VERCEL_API_TOKEN}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ value: ip, ttl: 60 })
-        });
-
-        if (!response.ok) throw new Error(await response.text());
-        console.log(`[DNS] Vercel pointed to ${ip}`);
-    } catch (e) {
-        console.error("[DNS] Sync Failed:", e);
-    }
-};
+// DNS is now handled by Cloudflare Tunnel - no sync needed
 
 /**
  * 2. SPEND MANAGEMENT
@@ -124,10 +100,13 @@ async function commitToGit(msg: string) {
  * 5. ELYSIA SERVER
  */
 new Elysia()
-    .use(cors({
-        origin: [/.*\.vercel\.app$/, 'localhost:3000'],
-        methods: ['GET', 'POST', 'OPTIONS']
+    .use(staticPlugin({
+        assets: 'public',
+        prefix: '/',
+        indexHTML: true,
+        noCache: false
     }))
+    .use(cors())
     .onBeforeHandle(() => { lastActivity = Date.now(); })
 
     .get("/health", () => ({ status: "warm", engine: "qwen-3-32b" }))
@@ -186,36 +165,34 @@ new Elysia()
         }
 
         let tex = await Bun.file("resume.tex").text();
-        const prompt = `You are a LaTeX Architect. Generate a JSON patch for this resume.
-Current LaTeX: \`\`\`latex
-${tex}
-\`\`\`
-Instruction: ${body.instruction}
-Context: ${body.job_description || "N/A"}
 
-Response format: { "patches": [{ "search": "exact string", "replace": "new string" }] }
-Return ONLY raw JSON.`;
-
-        // Bedrock Invoke
+        // Bedrock Invoke - Qwen uses OpenAI-compatible messages format
         const response = await bedrock.send(new InvokeModelCommand({
             modelId: "qwen.qwen3-32b-v1:0",
             contentType: "application/json",
             accept: "application/json",
             body: JSON.stringify({
-                prompt: prompt,
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are a LaTeX Architect. You generate JSON patches to modify LaTeX resumes. Return ONLY raw JSON, no markdown, no explanation."
+                    },
+                    {
+                        role: "user",
+                        content: `Current LaTeX:\n\`\`\`latex\n${tex}\n\`\`\`\n\nInstruction: ${body.instruction}\nContext: ${body.job_description || "N/A"}\n\nResponse format: { "patches": [{ "search": "exact string", "replace": "new string" }] }`
+                    }
+                ],
                 max_tokens: 4096,
                 temperature: 0.1
             })
         }));
 
-        // Cost Accounting
-        const responseHeaders = response.$metadata.httpStatusCode === 200 ? {} : {};
-        const iTokens = 0; // Token counts from response metadata if available
-        const oTokens = 0;
-        await logSpend((iTokens * COST_IN_TOKENS) + (oTokens * COST_OUT_TOKENS));
+        // Cost Accounting (placeholder - actual token counts from response if available)
+        await logSpend(0.001); // Approximate cost per request
 
         const resBody = JSON.parse(new TextDecoder().decode(response.body));
-        const generated = resBody.output?.text || resBody.generation || resBody.choices?.[0]?.text || "";
+        // OpenAI-compatible format: choices[0].message.content
+        const generated = resBody.choices?.[0]?.message?.content || resBody.output?.text || resBody.generation || "";
         const jsonMatch = generated.match(/\{[\s\S]*\}/);
 
         if (!jsonMatch) {
@@ -251,6 +228,5 @@ Return ONLY raw JSON.`;
     .listen(8000);
 
 // Ignition
-syncDNS();
 await initRepo();
 console.log("🚀 Resume Backend Online | Port 8000");

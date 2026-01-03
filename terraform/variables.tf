@@ -5,3 +5,9 @@ variable "tags" { default = { Project = "ResumeBackend", ManagedBy = "Terraform"
 variable "github_token" { sensitive = true }
 variable "repo_owner" {}
 variable "repo_name" {}
+
+# Cloudflare Tunnel
+variable "cloudflare_tunnel_token" { 
+  sensitive = true 
+  default   = "" # Set this after creating tunnel in Cloudflare dashboard
+}
