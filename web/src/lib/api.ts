@@ -41,8 +41,14 @@ export async function updateResume(
         }),
     });
 
-    // The proxy always returns JSON for this endpoint now
-    return response.json();
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+        return response.json();
+    } else {
+        const text = await response.text();
+        // If it's a 500 with text, throw it so UI shows it
+        throw new Error(text || `API Error: ${response.statusText}`);
+    }
 }
 
 export async function commitChanges(

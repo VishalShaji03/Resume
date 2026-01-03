@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import ResumeForm from './ResumeForm';
 import ResumeEditor from './ResumeEditor';
 import PdfPreview from './PdfPreview';
@@ -17,6 +17,20 @@ export default function Dashboard({ apiUrl }: DashboardProps) {
     // -- State Management --
     const [latex, setLatex] = useState('');
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+
+    // Auto-fetch PDF on mount
+    useEffect(() => {
+        if (!apiUrl) return;
+        const target = `${apiUrl}/pdf`;
+        const proxyUrl = `/api/proxy?target=${encodeURIComponent(target)}`;
+        // We can just set the proxy URL directly as the iframe src.
+        // But validation: check if it exists first?
+        // Actually, just setting it is faster. If 404, iframe will show error.
+        // Let's verify connectivity first to be clean.
+        fetch(proxyUrl).then(res => {
+            if (res.ok) setPdfUrl(proxyUrl);
+        }).catch(console.error);
+    }, [apiUrl]);
     const [history, setHistory] = useState<string[]>([]);
     const [future, setFuture] = useState<string[]>([]);
 
