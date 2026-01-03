@@ -11,6 +11,7 @@ resource "aws_lambda_function" "wakeup" {
   runtime          = "python3.12"
   filename         = data.archive_file.wakeup_zip.output_path
   source_code_hash = data.archive_file.wakeup_zip.output_base64sha256
+  timeout          = 15
   
   environment {
     variables = {
