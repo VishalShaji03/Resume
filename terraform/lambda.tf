@@ -25,7 +25,7 @@ resource "aws_lambda_function_url" "wakeup_url" {
   function_name      = aws_lambda_function.wakeup.function_name
   authorization_type = "NONE"
   cors {
-    allow_origins = ["*"]
-    allow_methods = ["GET"]
+    allow_origins     = ["*"]
+    allow_methods     = ["*"]
   }
 }
