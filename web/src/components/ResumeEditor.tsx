@@ -1,35 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 interface ResumeEditorProps {
+    latex: string;
+    setLatex: (val: string) => void;
     onPreviewUpdate: (url: string) => void;
     apiUrl: string;
 }
 
-export default function ResumeEditor({ onPreviewUpdate, apiUrl }: ResumeEditorProps) {
-    const [latex, setLatex] = useState('');
+export default function ResumeEditor({ latex, setLatex, onPreviewUpdate, apiUrl }: ResumeEditorProps) {
     const [status, setStatus] = useState<'idle' | 'loading' | 'saving' | 'compiling'>('idle');
-
-    useEffect(() => {
-        // Fetch current resume on mount
-        async function fetchResume() {
-            if (!apiUrl) return;
-
-            try {
-                // Proxy: Fetch resume
-                const target = `${apiUrl}/resume`;
-                const res = await fetch(`/api/proxy?target=${encodeURIComponent(target)}`);
-                if (res.ok) {
-                    const text = await res.text();
-                    setLatex(text);
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        }
-        fetchResume();
-    }, [apiUrl]);
 
     const handleCompile = async () => {
         if (!apiUrl) return;
@@ -45,7 +26,6 @@ export default function ResumeEditor({ onPreviewUpdate, apiUrl }: ResumeEditorPr
             });
 
             if (res.ok) {
-                // The proxy now returns binary properly.
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
                 onPreviewUpdate(url);
@@ -57,21 +37,26 @@ export default function ResumeEditor({ onPreviewUpdate, apiUrl }: ResumeEditorPr
         }
     };
 
+    /**
+     * "Save" in manual editor context acts as a "Checkpoint" locally for now, 
+     * OR acts as a soft-save to filesystem.
+     * Use POST /save explicitly if we want to persist to disk without committing.
+     */
     const handleSave = async () => {
         if (!apiUrl) return;
 
         setStatus('saving');
         try {
-            // Proxy: Save
+            // Proxy: Save using POST /save (filesystem only, no commit)
             const target = `${apiUrl}/save`;
             const res = await fetch(`/api/proxy?target=${encodeURIComponent(target)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ latex, message: 'Manual update via Editor' })
+                body: JSON.stringify({ latex })
             });
 
             if (res.ok) {
-                alert('Changes saved successfully!');
+                alert('Changes saved to server (not committed).');
             } else {
                 alert('Failed to save changes.');
             }
@@ -93,7 +78,7 @@ export default function ResumeEditor({ onPreviewUpdate, apiUrl }: ResumeEditorPr
                         disabled={status !== 'idle'}
                         className="px-3 py-1 bg-green-700 text-white text-xs rounded hover:bg-green-600 disabled:opacity-50 transition-colors"
                     >
-                        {status === 'saving' ? 'Saving...' : 'Save Changes'}
+                        {status === 'saving' ? 'Saving...' : 'Save (Disk)'}
                     </button>
                     <button
                         onClick={handleCompile}

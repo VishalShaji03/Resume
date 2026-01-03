@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Max allowed for Hobby plan
 
 async function handler(req: NextRequest) {
     const url = new URL(req.url);

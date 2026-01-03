@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { updateResume } from '@/lib/api';
 
 interface ResumeFormProps {
-    onSuccess?: () => void;
+    onSuccess: (newLatex: string, newPdfUrl: string) => void;
     apiUrl: string;
 }
 
@@ -12,7 +12,6 @@ export default function ResumeForm({ onSuccess, apiUrl }: ResumeFormProps) {
     const [instruction, setInstruction] = useState('');
     const [jobDescription, setJobDescription] = useState('');
     const [showJD, setShowJD] = useState(false);
-    const [commit, setCommit] = useState(true);
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [message, setMessage] = useState('');
 
@@ -24,13 +23,21 @@ export default function ResumeForm({ onSuccess, apiUrl }: ResumeFormProps) {
         setMessage('');
 
         try {
-            const result = await updateResume(instruction, jobDescription, apiUrl, commit);
+            // Commit is now MANUAL. We pass nothing for commit param (defaults false in api wrapper).
+            const result = await updateResume(instruction, jobDescription, apiUrl);
+
+            if (result.error) throw new Error(result.error);
+            if (!result.latex) throw new Error("No LaTeX returned");
+
             setStatus('success');
-            setMessage(`Success! Update started. Conversation ID: ${result.conversation_id}`);
+            setMessage(`Success! Update applied.`);
             setInstruction('');
             setJobDescription('');
             setShowJD(false);
-            if (onSuccess) onSuccess();
+
+            // Pass the new state up using the returned latex and pdf signature
+            onSuccess(result.latex, result.pdfUrl || '');
+
         } catch (error) {
             setStatus('error');
             setMessage(error instanceof Error ? error.message : 'An error occurred');
@@ -65,16 +72,6 @@ export default function ResumeForm({ onSuccess, apiUrl }: ResumeFormProps) {
                     >
                         {showJD ? '- Remove Job Description' : '+ Add Job Description (Auto-Tailor)'}
                     </button>
-
-                    <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={commit}
-                            onChange={(e) => setCommit(e.target.checked)}
-                            className="rounded border-zinc-700 bg-zinc-800 text-white"
-                        />
-                        Commit to Git
-                    </label>
 
                     <button
                         type="submit"

@@ -95,7 +95,7 @@ setInterval(async () => {
  */
 new Elysia()
     .use(cors({
-        origin: [/.*\.vercel\.app$/, 'localhost:3000'], // Allow Vercel + Local Dev
+        origin: [/.*\.vercel\.app$/, 'localhost:3000'],
         methods: ['GET', 'POST', 'OPTIONS']
     }))
     .onBeforeHandle(() => { lastActivity = Date.now(); })
@@ -104,12 +104,37 @@ new Elysia()
 
     .get("/resume", async () => await Bun.file("resume.tex").text())
 
+    .get("/pdf", async () => {
+        const file = Bun.file("resume.pdf");
+        return (await file.exists()) ? new Response(file) : { error: "PDF not found" };
+    })
+
+    .get("/history", async () => {
+        // Returns git log as JSON
+        const cmd = ["git", "log", "--pretty=format:%H|%s|%an|%aI", "-n", "10"];
+        const proc = Bun.spawn(cmd, { stdout: "pipe" });
+        const output = await new Response(proc.stdout).text();
+
+        return output.split("\n").filter(Boolean).map(line => {
+            const [sha, message, author, date] = line.split("|");
+            return { sha, message, author, date };
+        });
+    })
+
+    .post("/commit", async ({ body }: any) => {
+        const msg = body.message || "Manual Commit";
+        try {
+            await commitToGit(msg);
+            return { status: "success", message: "Changes pushed to GitHub" };
+        } catch (e) {
+            return { status: "error", error: String(e) };
+        }
+    })
+
     .post("/save", async ({ body }: any) => {
         if (!body.latex) return { error: "No content" };
         await Bun.write("resume.tex", body.latex);
-        if (body.commit !== false) {
-            await commitToGit(body.message || "Manual Update").catch(console.error);
-        }
+        // Save no longer commits automatically. Explicit commit required.
         return { status: "saved" };
     })
 
@@ -174,10 +199,19 @@ Return ONLY raw JSON.`;
             await Bun.write("resume.tex", tex);
             const { exitCode } = await Bun.spawn(["tectonic", "resume.tex"]).exited;
 
-            if (exitCode === 0 && body.commit !== false) {
-                await commitToGit(`AI: ${body.instruction.slice(0, 40)}`);
+            if (exitCode !== 0) {
+                set.status = 500;
+                return { error: "Compilation failed after patch" };
             }
-            return new Response(Bun.file("resume.pdf"));
+
+            // Return JSON so frontend can handle state (Undo/Redo)
+            // We return the NEW latex.
+            return {
+                status: "success",
+                latex: tex,
+                pdfUrl: "/pdf?t=" + Date.now() // Cache busting
+            };
+
         } catch (e) {
             set.status = 500;
             return { error: "Failed to apply patches" };
@@ -195,7 +229,9 @@ async function initRepo() {
     Bun.spawnSync(["git", "init"]);
     Bun.spawnSync(["git", "config", "user.email", "bot@terraless.io"]);
     Bun.spawnSync(["git", "config", "user.name", "QwenArchitect"]);
-    Bun.spawnSync(["git", "remote", "add", "origin", remote]);
+    try {
+        Bun.spawnSync(["git", "remote", "add", "origin", remote]);
+    } catch { } // Remote might exist
 
     console.log("[Git] Syncing main...");
     Bun.spawnSync(["git", "fetch", "origin", "main"]);

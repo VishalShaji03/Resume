@@ -1,38 +1,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { getHistory, Commit } from '@/lib/api';
 
-interface Commit {
-    sha: string;
-    message: string;
-    date: string;
-    author: string;
+interface HistorySliderProps {
+    apiUrl: string;
 }
 
-export default function HistorySlider() {
+export default function HistorySlider({ apiUrl }: HistorySliderProps) {
     const [commits, setCommits] = useState<Commit[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         async function fetchHistory() {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/update', '/history');
             if (!apiUrl) return;
-
             setLoading(true);
-            try {
-                const res = await fetch(apiUrl);
-                if (res.ok) {
-                    const data = await res.json();
-                    setCommits(data);
-                }
-            } catch (e) {
-                console.error("Failed to fetch history", e);
-            } finally {
-                setLoading(false);
-            }
+            const data = await getHistory(apiUrl);
+            setCommits(data);
+            setLoading(false);
         }
         fetchHistory();
-    }, []);
+    }, [apiUrl]);
 
     if (loading) return <div className="text-zinc-500 text-sm">Loading history...</div>;
     if (commits.length === 0) return null;

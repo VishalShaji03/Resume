@@ -1,22 +1,31 @@
 export interface UpdateResponse {
     status: string;
-    new_sha: string;
-    conversation_id: string;
+    latex?: string;
+    pdfUrl?: string;
+    error?: string;
 }
 
-// Removed static API_URL
+export interface Commit {
+    sha: string;
+    message: string;
+    author: string;
+    date: string;
+}
+
+export interface CommitResponse {
+    status: string;
+    message?: string;
+    error?: string;
+}
 
 export async function updateResume(
     instruction: string,
     job_description: string | undefined,
-    baseUrl: string,
-    commit: boolean = true
+    baseUrl: string
 ): Promise<UpdateResponse> {
-    if (!baseUrl) {
-        throw new Error('API URL not provided');
-    }
+    if (!baseUrl) throw new Error('API URL not provided');
 
-    // Use the local Next.js proxy to avoid Mixed Content (HTTPS -> HTTP)
+    // Proxy: Update (returns JSON now)
     const targetUrl = `${baseUrl}/update`;
     const proxyUrl = `/api/proxy?target=${encodeURIComponent(targetUrl)}`;
 
@@ -25,13 +34,48 @@ export async function updateResume(
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ instruction, job_description, commit }),
+        body: JSON.stringify({
+            instruction,
+            job_description,
+            commit: false // Never auto-commit from AI anymore
+        }),
     });
 
-    if (!response.ok) {
-        throw new Error(`API Error: ${response.statusText}`);
-    }
+    // The proxy always returns JSON for this endpoint now
+    return response.json();
+}
+
+export async function commitChanges(
+    message: string,
+    baseUrl: string
+): Promise<CommitResponse> {
+    if (!baseUrl) throw new Error('API URL not provided');
+
+    const targetUrl = `${baseUrl}/commit`;
+    const proxyUrl = `/api/proxy?target=${encodeURIComponent(targetUrl)}`;
+
+    const response = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+    });
 
     return response.json();
 }
 
+export async function getHistory(baseUrl: string): Promise<Commit[]> {
+    if (!baseUrl) return [];
+
+    const targetUrl = `${baseUrl}/history`;
+    const proxyUrl = `/api/proxy?target=${encodeURIComponent(targetUrl)}`;
+
+    try {
+        const response = await fetch(proxyUrl);
+        if (response.ok) {
+            return response.json();
+        }
+    } catch (e) {
+        console.error("History fetch failed", e);
+    }
+    return [];
+}
