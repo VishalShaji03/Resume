@@ -7,22 +7,15 @@ import json
 SPEND_LIMIT = 0.50 
 
 def create_response(status_code, body):
-    """Helper to return consistent CORS-enabled responses for Vercel."""
+    """Helper to return JSON responses."""
     return {
         "statusCode": status_code,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*", # Ideally your Vercel domain
-            "Access-Control-Allow-Methods": "GET, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type"
-        },
+        "headers": { "Content-Type": "application/json" },
         "body": json.dumps(body)
     }
 
 def handler(event, context):
-    # Handle preflight OPTIONS request
-    if event.get('httpMethod') == 'OPTIONS':
-        return create_response(200, {})
+
 
     ecs = boto3.client('ecs')
     ec2 = boto3.client('ec2')

@@ -16,7 +16,11 @@ export async function updateResume(
         throw new Error('API URL not provided');
     }
 
-    const response = await fetch(`${baseUrl}/update`, {
+    // Use the local Next.js proxy to avoid Mixed Content (HTTPS -> HTTP)
+    const targetUrl = `${baseUrl}/update`;
+    const proxyUrl = `/api/proxy?target=${encodeURIComponent(targetUrl)}`;
+
+    const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

@@ -19,7 +19,9 @@ export default function Home() {
         if (data.status === 'ready' && data.url) {
           // Double check health
           try {
-            const health = await fetch(`${data.url}/health`);
+            // Use proxy for health check too
+            const target = `${data.url}/health`;
+            const health = await fetch(`/api/proxy?target=${encodeURIComponent(target)}`);
             if (health.ok) {
               setApiUrl(data.url);
               setStatus('ready');

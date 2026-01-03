@@ -17,7 +17,9 @@ export default function ResumeEditor({ onPreviewUpdate, apiUrl }: ResumeEditorPr
             if (!apiUrl) return;
 
             try {
-                const res = await fetch(`${apiUrl}/resume`);
+                // Proxy: Fetch resume
+                const target = `${apiUrl}/resume`;
+                const res = await fetch(`/api/proxy?target=${encodeURIComponent(target)}`);
                 if (res.ok) {
                     const text = await res.text();
                     setLatex(text);
@@ -34,18 +36,16 @@ export default function ResumeEditor({ onPreviewUpdate, apiUrl }: ResumeEditorPr
 
         setStatus('compiling');
         try {
-            const res = await fetch(`${apiUrl}/preview`, {
+            // Proxy: Compile/Preview
+            const target = `${apiUrl}/preview`;
+            const res = await fetch(`/api/proxy?target=${encodeURIComponent(target)}`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ latex })
             });
-            if (res.ok) {
-                const data = await res.json(); // Assuming preview returns { url: ... } or raw PDF blob? 
-                // Wait, compute/main.ts returns a Response(file). So it's a blob.
-                // We need to handle blob URL creation here if main.ts returns raw PDF.
-                // Let's assume for now api returns object for consistency or we adjust main.ts.
 
-                // ADJUSTMENT: main.ts returns `new Response(file)`. That is a BLOB.
-                // We need to create object URL.
+            if (res.ok) {
+                // The proxy now returns binary properly.
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
                 onPreviewUpdate(url);
@@ -62,10 +62,14 @@ export default function ResumeEditor({ onPreviewUpdate, apiUrl }: ResumeEditorPr
 
         setStatus('saving');
         try {
-            const res = await fetch(`${apiUrl}/save`, {
+            // Proxy: Save
+            const target = `${apiUrl}/save`;
+            const res = await fetch(`/api/proxy?target=${encodeURIComponent(target)}`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ latex, message: 'Manual update via Editor' })
             });
+
             if (res.ok) {
                 alert('Changes saved successfully!');
             } else {
