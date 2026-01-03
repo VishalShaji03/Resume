@@ -165,18 +165,72 @@ Context: ${body.job_description || "N/A"}
 Response format: { "patches": [{ "search": "exact string", "replace": "new string" }] }
 Return ONLY raw JSON.`;
 
-        // Bedrock Invoke
-        const response = await bedrock.send(new InvokeModelCommand({
-            modelId: "qwen.qwen3-32b-instruct",
-            contentType: "application/json",
-            accept: "application/json",
-            body: JSON.stringify({
-                prompt: prompt,
-                max_tokens: 4096,
-                temperature: 0.1,
-                stop: ["<|endoftext|>", "<|im_end|>"]
-            })
-        }));
+        // ... (imports remain)
+        import { Elysia } from 'elysia';
+// ...
+
+// ... (existing code)
+
+    .post("/update", async ({ body, set }: any) => {
+            if (!(await checkSpend())) {
+                set.status = 402;
+                return { error: "Daily budget exceeded" };
+            }
+
+            let tex = await Bun.file("resume.tex").text();
+            // Updated Model ID to a valid one found in models.json
+            // Using "qwen.qwen3-32b-v1:0" (Qwen3 32B dense)
+            // Adjust prompt if needed for specific model behavior
+            const prompt = `You are a LaTeX Architect. Generate a JSON patch for this resume.
+Current LaTeX: \`\`\`latex\n${tex}\n\`\`\`
+Instruction: ${body.instruction}
+Context: ${body.job_description || "N/A"}
+
+Response format: { "patches": [{ "search": "exact string", "replace": "new string" }] }
+Return ONLY raw JSON.`;
+
+            // Bedrock Invoke
+            const response = await bedrock.send(new InvokeModelCommand({
+                modelId: "qwen.qwen3-32b-v1:0", // CORRECTED MODEL ID
+                contentType: "application/json",
+                accept: "application/json",
+                body: JSON.stringify({
+                    prompt: prompt,
+                    max_tokens: 4096,
+                    temperature: 0.1,
+                    stop: ["<|endoftext|>", "<|im_end|>"]
+                })
+            }));
+
+            // ... (rest of update logic)
+        })
+            .listen(8000);
+
+        /**
+         * 5. GIT HELPERS
+         */
+        async function initRepo() {
+            if (!process.env.GITHUB_TOKEN) return;
+            const remote = `https://${process.env.GITHUB_TOKEN}@github.com/${process.env.REPO_OWNER}/${process.env.REPO_NAME}.git`;
+
+            Bun.spawnSync(["git", "init"]);
+            Bun.spawnSync(["git", "config", "user.email", "bot@terraless.io"]);
+            Bun.spawnSync(["git", "config", "user.name", "QwenArchitect"]);
+            try {
+                Bun.spawnSync(["git", "remote", "add", "origin", remote]);
+            } catch { } // Remote might exist
+
+            console.log("[Git] Syncing main...");
+            Bun.spawnSync(["git", "fetch", "origin", "main"]);
+            Bun.spawnSync(["git", "reset", "--hard", "origin/main"]);
+
+            // Compile PDF on startup so /pdf works immediately
+            console.log("[Init] Compiling initial PDF...");
+            const { exitCode } = Bun.spawnSync(["tectonic", "resume.tex"]);
+            if (exitCode !== 0) console.error("[Init] Initial compilation failed.");
+        }
+
+        // ... (rest of file)
 
         // Cost Accounting
         const iTokens = parseInt(response.headers["x-amzn-bedrock-input-token-count"] || "0");
