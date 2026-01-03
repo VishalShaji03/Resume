@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 async function handler(req: NextRequest) {
     const url = new URL(req.url);
     const target = url.searchParams.get('target');
