@@ -1,6 +1,5 @@
 import { Elysia } from 'elysia';
 import { cors } from '@elysiajs/cors';
-import { staticPlugin } from '@elysiajs/static';
 import { ECSClient, StopTaskCommand } from "@aws-sdk/client-ecs";
 import { DynamoDBClient, GetItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
@@ -100,12 +99,6 @@ async function commitToGit(msg: string) {
  * 5. ELYSIA SERVER
  */
 new Elysia()
-    .use(staticPlugin({
-        assets: 'public',
-        prefix: '/',
-        indexHTML: true,
-        noCache: false
-    }))
     .use(cors())
     .onBeforeHandle(() => { lastActivity = Date.now(); })
 
@@ -115,7 +108,25 @@ new Elysia()
 
     .get("/pdf", async () => {
         const file = Bun.file("resume.pdf");
-        return (await file.exists()) ? new Response(file) : { error: "PDF not found" };
+        if (await file.exists()) {
+            return new Response(file, {
+                headers: { 'Content-Type': 'application/pdf' }
+            });
+        }
+        return { error: "PDF not found" };
+    })
+
+    .get("/download", async () => {
+        const file = Bun.file("resume.pdf");
+        if (await file.exists()) {
+            return new Response(file, {
+                headers: {
+                    'Content-Type': 'application/pdf',
+                    'Content-Disposition': 'attachment; filename="resume.pdf"'
+                }
+            });
+        }
+        return { error: "PDF not found" };
     })
 
     .get("/history", async () => {
@@ -224,6 +235,59 @@ new Elysia()
             set.status = 500;
             return { error: "Failed to apply patches: " + String(e) };
         }
+    })
+
+    // Static file serving (fallback for frontend)
+    .get("/*", async ({ params, set }: any) => {
+        const path = params["*"] || "";
+
+        // MIME type mapping
+        const mimeTypes: Record<string, string> = {
+            '.html': 'text/html',
+            '.css': 'text/css',
+            '.js': 'application/javascript',
+            '.json': 'application/json',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.svg': 'image/svg+xml',
+            '.ico': 'image/x-icon',
+            '.woff': 'font/woff',
+            '.woff2': 'font/woff2',
+            '.ttf': 'font/ttf',
+            '.txt': 'text/plain',
+        };
+
+        const getContentType = (filepath: string) => {
+            const ext = filepath.substring(filepath.lastIndexOf('.'));
+            return mimeTypes[ext] || 'application/octet-stream';
+        };
+
+        // Try exact path first
+        let filePath = `public/${path}`;
+        let file = Bun.file(filePath);
+
+        if (await file.exists()) {
+            return new Response(file, {
+                headers: { 'Content-Type': getContentType(filePath) }
+            });
+        }
+
+        // Try with index.html for directory paths
+        if (!path || !path.includes('.')) {
+            filePath = path ? `public/${path}/index.html` : 'public/index.html';
+            file = Bun.file(filePath);
+
+            if (await file.exists()) {
+                return new Response(file, {
+                    headers: { 'Content-Type': 'text/html' }
+                });
+            }
+        }
+
+        // 404 fallback
+        set.status = 404;
+        return { error: "Not found" };
     })
     .listen(8000);
 

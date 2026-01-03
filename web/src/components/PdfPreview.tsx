@@ -13,7 +13,7 @@ export default function PdfPreview({ url, loading }: PdfPreviewProps) {
                 <div className="flex items-center gap-3">
                     {url && (
                         <a
-                            href={url}
+                            href="/download"
                             download="resume.pdf"
                             className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded transition-colors flex items-center gap-2"
                             title="Download latest PDF"
