@@ -25,7 +25,7 @@ resource "aws_iam_role_policy" "task_perms" {
   policy = jsonencode({
     Version = "2012-10-17", Statement = [
       { Action = ["ecs:StopTask"], Effect = "Allow", Resource = "*" },
-      { Action = ["bedrock:InvokeModel"], Effect = "Allow", Resource = "arn:aws:bedrock:${var.aws_region}::foundation-model/qwen.qwen3-32b-instruct" },
+      { Action = ["bedrock:InvokeModel"], Effect = "Allow", Resource = "arn:aws:bedrock:${var.aws_region}::foundation-model/qwen.*" },
       { Action = ["dynamodb:GetItem", "dynamodb:UpdateItem"], Effect = "Allow", Resource = aws_dynamodb_table.spend_shield.arn }
     ]
   })
