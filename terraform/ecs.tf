@@ -26,6 +26,12 @@ resource "aws_ecs_task_definition" "app" {
   execution_role_arn       = aws_iam_role.execution.arn
   task_role_arn            = aws_iam_role.task.arn
 
+  # Required for SOCI lazy-loading
+  runtime_platform {
+    operating_system_family = "LINUX"
+    cpu_architecture        = "X86_64"
+  }
+
   container_definitions = jsonencode([{
     name  = "backend"
     image = "${aws_ecr_repository.repo.repository_url}:latest"
