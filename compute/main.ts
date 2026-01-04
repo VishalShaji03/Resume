@@ -98,9 +98,30 @@ async function commitToGit(msg: string) {
 /**
  * 5. ELYSIA SERVER
  */
+// --- SECURITY UTILS ---
+function sanitizeLatex(latex: string): string {
+    const dangerous = [
+        "\\input", "\\include", "\\write", "\\openout",
+        "\\immediate", "\\appto", "\\verbatiminput", "\\import"
+    ];
+    for (const cmd of dangerous) {
+        if (latex.includes(cmd)) {
+            throw new Error(`Security Violation: Command '${cmd}' is not allowed.`);
+        }
+    }
+    return latex;
+}
+
 new Elysia()
     .use(cors())
-    .onBeforeHandle(() => { lastActivity = Date.now(); })
+    .onRequest(({ set }) => {
+        lastActivity = Date.now();
+        // Security Headers
+        set.headers["X-Frame-Options"] = "SAMEORIGIN";
+        set.headers["X-Content-Type-Options"] = "nosniff";
+        set.headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        set.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    })
 
     .get("/health", () => ({ status: "warm", engine: "qwen-3-32b" }))
 
@@ -130,8 +151,7 @@ new Elysia()
     })
 
     .get("/history", async () => {
-        const cmd = ["git", "log", "--pretty=format:%H|%s|%an|%aI", "-n", "10"];
-        const proc = Bun.spawn(cmd, { stdout: "pipe" });
+        const proc = Bun.spawn(["git", "log", "--pretty=format:%h|%s|%an|%ad", "--date=short", "-n", "10"]);
         const output = await new Response(proc.stdout).text();
 
         return output.split("\n").filter(Boolean).map(line => {
@@ -152,13 +172,25 @@ new Elysia()
 
     .post("/save", async ({ body }: any) => {
         if (!body.latex) return { error: "No content" };
-        await Bun.write("resume.tex", body.latex);
-        return { status: "saved" };
+        try {
+            const safeTex = sanitizeLatex(body.latex);
+            await Bun.write("resume.tex", safeTex);
+            return { status: "saved" };
+        } catch (e) {
+            return { error: String(e) };
+        }
     })
 
     .post("/preview", async ({ body, set }: any) => {
         if (!body.latex) return { error: "No content" };
-        await Bun.write("preview.tex", body.latex);
+
+        try {
+            const safeTex = sanitizeLatex(body.latex);
+            await Bun.write("preview.tex", safeTex);
+        } catch (e) {
+            set.status = 400;
+            return { error: String(e) };
+        }
 
         try {
             const proc = Bun.spawn(["tectonic", "preview.tex"], {
