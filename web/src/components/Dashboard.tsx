@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import Link from 'next/link';
 import ResumeForm from './ResumeForm';
 import ResumeEditor from './ResumeEditor';
 import PdfPreview from './PdfPreview';
@@ -136,7 +137,7 @@ export default function Dashboard({ apiUrl }: DashboardProps) {
                                 View on GitHub
                             </a>
                         </div>
-                        <p className="text-zinc-500 text-sm mt-6">Run <code className="bg-zinc-800 px-2 py-1 rounded">npx vishhh03</code> to restart</p>
+                        <p className="text-zinc-500 text-sm mt-6">Run <code className="bg-zinc-800 px-2 py-1 rounded">npx latex-resume-cli</code> to restart</p>
                     </div>
                 </div>
             )}
@@ -175,6 +176,12 @@ export default function Dashboard({ apiUrl }: DashboardProps) {
                         >
                             Commit to Git
                         </button>
+                        <Link
+                            href="/tutorial"
+                            className="px-3 py-1 bg-zinc-700 text-white text-xs rounded hover:bg-zinc-600 transition-colors"
+                        >
+                            Tutorial
+                        </Link>
                         <button
                             onClick={() => {
                                 if (confirm('Stop the ECS container? This will shut down the backend.')) {

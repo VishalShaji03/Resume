@@ -1,5 +1,9 @@
 # Resume Editor
 
+```bash
+npx latex-resume-cli
+```
+
 I got tired of manually tweaking my resume for every job application. So I built this.
 
 It's a self-healing resume editor that runs on AWS. An AI agent (Qwen 3 on Bedrock) takes plain English requests and generates LaTeX patches. The whole thing costs $0/hr when idle.
@@ -21,7 +25,7 @@ The backend only runs when you're actively using it. Otherwise, it's completely 
 Everything runs in a single Docker container on ECS Fargate Spot:
 - **Bun backend** - handles API requests, serves the frontend
 - **Next.js frontend** - static export, bundled into the container
-- **TeX Live** - compiles LaTeX to PDF (xelatex + latexmk)
+- **TeX Live** - compiles LaTeX to PDF (pdflatex + latexmk)
 - **Cloudflare Tunnel** - exposes the service without a load balancer
 
 ### Why Fargate Spot?

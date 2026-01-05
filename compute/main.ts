@@ -85,15 +85,46 @@ async function initRepo() {
 
     // Compile PDF on startup so /pdf works immediately
     console.log("[Init] Compiling initial PDF...");
-    const { exitCode } = Bun.spawnSync(["latexmk", "-xelatex", "-interaction=nonstopmode", "resume.tex"]);
+    const { exitCode } = Bun.spawnSync(["latexmk", "-pdf", "-interaction=nonstopmode", "resume.tex"]);
     if (exitCode !== 0) console.error("[Init] Initial compilation failed.");
 }
 
 async function commitToGit(msg: string) {
-    Bun.spawnSync(["git", "add", "resume.tex"]);
-    Bun.spawnSync(["git", "commit", "-m", msg]);
-    const { exitCode } = Bun.spawnSync(["git", "push", "origin", "main"]);
-    if (exitCode !== 0) throw new Error("Push failed");
+    console.log("[Git] Starting commit...");
+
+    // Stage changes
+    const add = Bun.spawnSync(["git", "add", "resume.tex"]);
+    console.log("[Git] Add exit:", add.exitCode);
+
+    // Check if there are changes to commit
+    const status = Bun.spawnSync(["git", "status", "--porcelain"]);
+    const statusOutput = new TextDecoder().decode(status.stdout);
+    console.log("[Git] Status:", statusOutput || "(no changes)");
+
+    if (!statusOutput.trim()) {
+        console.log("[Git] No changes to commit");
+        return; // Nothing to commit, that's OK
+    }
+
+    // Commit
+    const commit = Bun.spawnSync(["git", "commit", "-m", msg]);
+    console.log("[Git] Commit exit:", commit.exitCode);
+    if (commit.exitCode !== 0) {
+        const err = new TextDecoder().decode(commit.stderr);
+        console.error("[Git] Commit error:", err);
+        throw new Error("Commit failed: " + err);
+    }
+
+    // Push
+    const push = Bun.spawnSync(["git", "push", "origin", "main"]);
+    console.log("[Git] Push exit:", push.exitCode);
+    if (push.exitCode !== 0) {
+        const err = new TextDecoder().decode(push.stderr);
+        console.error("[Git] Push error:", err);
+        throw new Error("Push failed: " + err);
+    }
+
+    console.log("[Git] Successfully pushed to GitHub");
 }
 
 /**
@@ -211,7 +242,7 @@ new Elysia()
 
         try {
             const compileStart = Date.now();
-            const proc = Bun.spawn(["latexmk", "-xelatex", "-interaction=nonstopmode", "preview.tex"], {
+            const proc = Bun.spawn(["latexmk", "-pdf", "-interaction=nonstopmode", "preview.tex"], {
                 stdout: "pipe",
                 stderr: "pipe",
             });
@@ -244,31 +275,39 @@ new Elysia()
 
         let tex = await Bun.file("resume.tex").text();
 
-        // Bedrock Invoke - Qwen uses OpenAI-compatible messages format
-        const response = await bedrock.send(new InvokeModelCommand({
-            modelId: "qwen.qwen3-32b-v1:0",
-            contentType: "application/json",
-            accept: "application/json",
-            body: JSON.stringify({
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are a LaTeX Architect. You generate JSON patches to modify LaTeX resumes. Return ONLY raw JSON, no markdown, no explanation."
-                    },
-                    {
-                        role: "user",
-                        content: `Current LaTeX:\n\`\`\`latex\n${tex}\n\`\`\`\n\nInstruction: ${body.instruction}\nContext: ${body.job_description || "N/A"}\n\nResponse format: { "patches": [{ "search": "exact string", "replace": "new string" }] }`
-                    }
-                ],
-                max_tokens: 4096,
-                temperature: 0.1
-            })
-        }));
+        let resBody;
+        try {
+            // Bedrock Invoke - Qwen uses OpenAI-compatible messages format
+            const response = await bedrock.send(new InvokeModelCommand({
+                modelId: "qwen.qwen3-32b-v1:0",
+                contentType: "application/json",
+                accept: "application/json",
+                body: JSON.stringify({
+                    messages: [
+                        {
+                            role: "system",
+                            content: "You are a LaTeX Architect. You generate JSON patches to modify LaTeX resumes. Return ONLY raw JSON, no markdown, no explanation."
+                        },
+                        {
+                            role: "user",
+                            content: `Current LaTeX:\n\`\`\`latex\n${tex}\n\`\`\`\n\nInstruction: ${body.instruction}\nContext: ${body.job_description || "N/A"}\n\nResponse format: { "patches": [{ "search": "exact string", "replace": "new string" }] }`
+                        }
+                    ],
+                    max_tokens: 4096,
+                    temperature: 0.1
+                })
+            }));
 
-        // Cost Accounting (placeholder - actual token counts from response if available)
-        await logSpend(0.001); // Approximate cost per request
+            // Cost Accounting (placeholder - actual token counts from response if available)
+            await logSpend(0.001); // Approximate cost per request
 
-        const resBody = JSON.parse(new TextDecoder().decode(response.body));
+            resBody = JSON.parse(new TextDecoder().decode(response.body));
+        } catch (bedrockErr: any) {
+            console.error("[Update] Bedrock error:", bedrockErr);
+            set.status = 500;
+            return { error: "AI service error: " + (bedrockErr.message || String(bedrockErr)) };
+        }
+
         // OpenAI-compatible format: choices[0].message.content
         const generated = resBody.choices?.[0]?.message?.content || resBody.output?.text || resBody.generation || "";
         const jsonMatch = generated.match(/\{[\s\S]*\}/);
@@ -283,7 +322,7 @@ new Elysia()
             patches.forEach((p: any) => { tex = tex.split(p.search).join(p.replace); });
 
             await Bun.write("resume.tex", tex);
-            const proc = Bun.spawn(["latexmk", "-xelatex", "-interaction=nonstopmode", "resume.tex"]);
+            const proc = Bun.spawn(["latexmk", "-pdf", "-interaction=nonstopmode", "resume.tex"]);
             const { exitCode } = await proc.exited;
 
             if (exitCode !== 0) {

@@ -34,7 +34,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     texlive-plain-generic \
     texlive-science \
     texlive-pictures \
-    texlive-xetex \
     latexmk \
     lmodern \
     && rm -rf /var/lib/apt/lists/*
@@ -59,7 +58,7 @@ COPY resume.tex .
 COPY --from=frontend /frontend/out ./public
 
 # Pre-compile resume to cache format files
-RUN latexmk -xelatex -interaction=nonstopmode resume.tex && latexmk -c
+RUN latexmk -pdf -interaction=nonstopmode resume.tex && latexmk -c
 
 # Copy entrypoint script
 COPY entrypoint.sh ./

@@ -1,9 +1,9 @@
-# vishhh03
+# latex-resume-cli
 
-> 🚀 Vishal's Interactive Resume CLI
+Interactive terminal to launch the AI Resume Editor.
 
 ```bash
-npx vishhh03
+npx latex-resume-cli
 ```
 
 ## What it does
@@ -16,7 +16,7 @@ An interactive terminal experience that lets you:
 
 This CLI triggers an AWS Lambda function that boots a Fargate Spot container running:
 - Next.js frontend (static export)
-- Bun backend with Tectonic LaTeX compiler
+- Bun backend with TeX Live (pdflatex)
 - Amazon Bedrock AI for resume editing
 - Cloudflare Tunnel for secure access
 

@@ -1,9 +1,9 @@
 {
-    "name": "vishhh03",
+    "name": "latex-resume-cli",
     "version": "1.0.0",
-    "description": "🚀 Vishal's Interactive Resume CLI - View my portfolio or launch the AI Resume Editor",
+    "description": "Interactive CLI to launch the AI Resume Editor",
     "bin": {
-        "vishhh03": "./index.js"
+        "latex-resume-cli": "./index.js"
     },
     "keywords": [
         "resume",
