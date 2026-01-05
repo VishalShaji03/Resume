@@ -48,7 +48,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       # ---------------------------
-      # 4. Build & Push Image
+      # 4. Build & Push Image with Docker
       # ---------------------------
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
@@ -70,28 +70,61 @@ jobs:
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
       # ---------------------------
-      # 5. Install & Create SOCI Index
+      # 5. Install containerd, nerdctl & SOCI
       # ---------------------------
-      - name: Install SOCI CLI
+      - name: Setup containerd and SOCI
         run: |
+          # Install containerd
+          sudo apt-get update
+          sudo apt-get install -y containerd
+          
+          # Start containerd
+          sudo systemctl start containerd
+          sudo systemctl enable containerd
+          
+          # Install nerdctl
+          NERDCTL_VERSION=1.7.6
+          curl -sSL https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz | sudo tar -xzf - -C /usr/local/bin
+          
+          # Install SOCI CLI
           SOCI_VERSION=0.7.0
           curl -sSL https://github.com/awslabs/soci-snapshotter/releases/download/v${SOCI_VERSION}/soci-snapshotter-${SOCI_VERSION}-linux-amd64.tar.gz | sudo tar -xzf - -C /usr/local/bin soci
+          
+          # Verify installations
+          containerd --version
+          nerdctl --version
+          soci --version
 
+      # ---------------------------
+      # 6. Create and Push SOCI Index
+      # ---------------------------
       - name: Create and Push SOCI Index
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
+          
+          # Get ECR password for nerdctl login
+          ECR_PASSWORD=$(aws ecr get-login-password --region ${{ env.AWS_REGION }})
+          
+          # Login to ECR with nerdctl (containerd)
+          echo "$ECR_PASSWORD" | sudo nerdctl login --username AWS --password-stdin $ECR_REGISTRY
+          
+          # Pull the image with nerdctl so containerd has it
+          echo "Pulling image with nerdctl..."
+          sudo nerdctl pull --platform linux/amd64 $IMAGE_URI
+          
+          # Create SOCI index
           echo "Creating SOCI index for $IMAGE_URI..."
           sudo soci create $IMAGE_URI
-
+          
+          # Push SOCI index to ECR
           echo "Pushing SOCI index to ECR..."
-          sudo soci push --user AWS:$(aws ecr get-login-password) $IMAGE_URI
+          sudo soci push --user AWS:$ECR_PASSWORD $IMAGE_URI
 
       # ---------------------------
-      # 6. Verify Image & Index
+      # 7. Verify Image & Index
       # ---------------------------
       - name: Verify image in ECR
         run: |
