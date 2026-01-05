@@ -85,10 +85,10 @@ jobs:
           IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
           echo "Creating SOCI index for $IMAGE_URI..."
-          soci create $IMAGE_URI
+          sudo soci create $IMAGE_URI
 
           echo "Pushing SOCI index to ECR..."
-          soci push --user AWS:$(aws ecr get-login-password) $IMAGE_URI
+          sudo soci push --user AWS:$(aws ecr get-login-password) $IMAGE_URI
 
       # ---------------------------
       # 6. Verify Image & Index
