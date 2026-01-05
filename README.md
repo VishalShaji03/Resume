@@ -1,75 +1,107 @@
-# Autonomous Resume Infrastructure
+# Resume Editor
 
-I got tired of manually tweaking my resume for every job application, so I engineered a solution to handle it.
+I got tired of manually tweaking my resume for every job application. So I built this.
 
-This is a self-healing, serverless platform that hosts my resume and uses an AI agent (Qwen 3 on Bedrock) to generate LaTeX patches for real-time updates.
+It's a self-healing resume editor that runs on AWS. An AI agent (Qwen 3 on Bedrock) takes plain English requests and generates LaTeX patches. The whole thing costs $0/hr when idle.
 
-It costs **$0.00/hr** when nobody is using it.
+## How it works
 
-## Architecture Decisions
+```
+You: "Add 2 years at Google doing Kubernetes stuff"
+     ↓
+AI generates LaTeX patch → compiles PDF → commits to GitHub
+     ↓
+You get a preview, accept or reject
+```
 
-### Why AWS ECS Fargate Spot?
-Most people would just use a Lambda function. I chose Fargate Spot for two reasons:
-1.  **Dependencies**: The resume compiler (`tectonic`) represents a heavy Rust binary dependency. Packaging that into a Lambda Layer is painful and hits size limits fast. With Docker, I just `apt-get install` what I need.
-2.  **Cost**: Fargate Spot is dirt cheap (approx. 70% off standard pricing). Since this service only runs for a few minutes when I'm actively editing, Spot interruptions are irrelevant.
+The backend only runs when you're actively using it. Otherwise, it's completely off.
 
-### Why Amazon Bedrock?
-I didn't want to manage OpenAI API keys in my frontend or worry about rate limits.
-Bedrock runs entirely inside my AWS VPC. There are no API keys to leak, and IAM roles handle the authentication. Plus, Qwen 3 32B on Bedrock is strictly pay-per-token, making it significantly cheaper than a ChatGPT Plus subscription for this use case.
+## Architecture
 
-### How is it "Efficient"?
-The system uses a **Wake-on-Demand** pattern.
-1.  **Idle State**: The entire backend is dead. 0 Containers running. **Cost: $0**.
-2.  **Trigger**: When I hit the frontend, a tiny Lambda function (The "Wake Up" signal) checks if the backend is running.
-3.  **Boot**: If not, it provisions a Fargate Spot task. This takes about 45-60 seconds.
-4.  **Shutdown**: The backend has a "Guardian" middleware. If it detects 10 minutes of inactivity, it kills its own process and terminates the ECS task. **Return to Cost: $0**.
+Everything runs in a single Docker container on ECS Fargate Spot:
+- **Bun backend** - handles API requests, serves the frontend
+- **Next.js frontend** - static export, bundled into the container
+- **TeX Live** - compiles LaTeX to PDF (xelatex + latexmk)
+- **Cloudflare Tunnel** - exposes the service without a load balancer
 
-## Setup Guide
+### Why Fargate Spot?
 
-If you want to deploy this yourself, here is the exact process.
+Lambda would've been the obvious choice, but TeX Live is huge. Cramming it into a Lambda layer is painful. With Docker, I just `apt-get install` what I need.
 
-### 1. Prerequisites
-*   **AWS Account**: You need admin access.
-*   **GitHub Account**: For hosting the code and kicking off Actions.
-*   **Terraform**: Installed locally to bootstrap the initial state (optional, can be done via CI if configured).
-*   **Cloudflare Account**: For the frontend (Pages).
+Fargate Spot is ~70% cheaper than regular Fargate. Since the service only runs for a few minutes at a time, Spot interruptions don't matter.
 
-### 2. Fork & Configure
-Fork this repository. Then, create the following secrets in your GitHub Repository settings:
+### Why Bedrock?
 
-*   `AWS_ACCESS_KEY_ID`: IAM User with permissions to manage ECS, IAM, and S3.
-*   `AWS_SECRET_ACCESS_KEY`: The secret key.
-*   `CF_API_TOKEN`: Cloudflare Token with `Pages:Edit` and `User Details:Read` permissions.
+No API keys to manage. Bedrock runs inside my VPC, auth is handled by IAM. Qwen 3 on Bedrock is pay-per-token, way cheaper than a ChatGPT subscription for occasional use.
 
-### 3. Deploy Infrastructure
-Go to the `terraform/` directory and update the `terraform.tfvars`:
+### Wake-on-Demand
+
+1. **Idle** - Nothing running. Cost: $0
+2. **You visit the site** - Lambda wakes up the backend (~45-60s cold start)
+3. **You edit your resume** - Backend is live
+4. **10 min of inactivity** - Backend kills itself. Back to $0
+
+SOCI lazy-loading is enabled, so container startup is faster than pulling the full image.
+
+## Setup
+
+### Prerequisites
+- AWS account with admin access
+- Cloudflare account (for the tunnel)
+- Terraform installed locally
+
+### Deploy
+
+1. Clone/fork this repo
+
+2. Set up GitHub secrets:
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+
+3. Configure Terraform:
+   ```bash
+   cd terraform
+   cp terraform.tfvars.example terraform.tfvars
+   # edit terraform.tfvars with your values
+   ```
+
+4. Deploy:
+   ```bash
+   terraform init
+   terraform apply
+   ```
+
+5. The workflow triggers on push to `main`. Your image builds, pushes to ECR, and the SOCI index gets created.
+
+### Environment Variables (terraform.tfvars)
+
 ```hcl
-app_name     = "resume-app"
-github_token = "your-personal-access-token" // Used by the backend to commit changes
-repo_owner   = "your-username"
-repo_name    = "your-repo-name"
+github_token            = "ghp_..."  # for committing resume changes
+repo_owner              = "your-username"
+repo_name               = "your-repo"
+cloudflare_tunnel_token = "eyJ..."  # from cloudflare zero trust dashboard
 ```
-Run the initial provisioning:
-```bash
-terraform init
-terraform apply
-```
-This single command builds the VPC, ECR repositories, IAM Roles, DynamoDB tables, and S3 buckets.
-
-### 4. Connect Frontend
-1.  Go to **Cloudflare Dashboard** > **Workers & Pages**.
-2.  Connect your Git repository.
-3.  **Framework**: Next.js (Static Export).
-4.  **Build Command**: `bun run build`.
-5.  **Environment Variables**: Add `NEXT_PUBLIC_WAKE_UP_URL`. You get this URL from the Terraform output (`wake_up_url`).
 
 ## Usage
-Once deployed, visit your Cloudflare URL.
-1.  The site will likely say "Backend Sleeping".
-2.  Click "Wake Up". Wait ~60 seconds for Fargate to provision capacity.
-3.  Type a request like *"Add Experience: Senior DevOps Engineer at Google, focused on Kubernetes scaling."*
-4.  The AI will generate the LaTeX patch, compile the PDF, and present the new version.
-5.  If you like it, the backend automatically commits the `resume.tex` change back to this repo.
+
+1. Go to your Cloudflare tunnel URL
+2. Site says "Backend Sleeping" - click Wake Up
+3. Wait ~60s for Fargate to spin up
+4. Type something like "Add experience at Google, 2 years, Kubernetes and GKE"
+5. AI generates the LaTeX, compiles, shows you the PDF
+6. Accept it → commits to GitHub automatically
+
+## Project Structure
+
+```
+├── compute/          # Bun backend (API + serves static files)
+├── web/              # Next.js frontend (builds to static)
+├── terraform/        # Infrastructure as code
+├── lambda_src/       # Wake/stop Lambdas
+├── resume.tex        # Your actual resume
+└── Dockerfile        # Everything bundled together
+```
 
 ---
-*Reference Implementation by [Vishal Shaji](https://github.com/Vishhh03).*
+
+Built by [Vishal Shaji](https://github.com/Vishhh03)
