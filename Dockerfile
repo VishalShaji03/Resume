@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     git \
-    # TeX Live for pdflatex
+    # TeX Live for xelatex (more reliable than pdflatex for fonts)
     texlive-latex-base \
     texlive-latex-recommended \
     texlive-fonts-recommended \
@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     texlive-plain-generic \
     texlive-science \
     texlive-pictures \
+    texlive-xetex \
     latexmk \
     lmodern \
     && rm -rf /var/lib/apt/lists/* \

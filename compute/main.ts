@@ -85,7 +85,7 @@ async function initRepo() {
 
     // Compile PDF on startup so /pdf works immediately
     console.log("[Init] Compiling initial PDF...");
-    const proc = Bun.spawn(["latexmk", "-pdf", "-interaction=nonstopmode", "resume.tex"], {
+    const proc = Bun.spawn(["latexmk", "-xelatex", "-interaction=nonstopmode", "resume.tex"], {
         stdout: "pipe",
         stderr: "pipe",
     });
@@ -256,7 +256,7 @@ new Elysia()
 
         try {
             const compileStart = Date.now();
-            const proc = Bun.spawn(["latexmk", "-pdf", "-interaction=nonstopmode", "preview.tex"], {
+            const proc = Bun.spawn(["latexmk", "-xelatex", "-interaction=nonstopmode", "preview.tex"], {
                 stdout: "pipe",
                 stderr: "pipe",
             });
@@ -336,7 +336,7 @@ new Elysia()
             patches.forEach((p: any) => { tex = tex.split(p.search).join(p.replace); });
 
             await Bun.write("resume.tex", tex);
-            const proc = Bun.spawn(["latexmk", "-pdf", "-interaction=nonstopmode", "resume.tex"], {
+            const proc = Bun.spawn(["latexmk", "-xelatex", "-interaction=nonstopmode", "resume.tex"], {
                 stdout: "pipe",
                 stderr: "pipe",
             });

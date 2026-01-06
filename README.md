@@ -6,59 +6,65 @@ npx latex-resume-cli
 
 I got tired of manually tweaking my resume for every job application. So I built this.
 
-It's a self-healing resume editor that runs on AWS. An AI agent (Qwen 3 on Bedrock) takes plain English requests and generates LaTeX patches. The whole thing costs $0/hr when idle.
+It's a resume editor that runs on AWS. Tell it what you want in plain English ("add 2 years at Google doing Kubernetes stuff") and an AI generates the LaTeX for you. The whole thing costs $0 when you're not using it.
 
-## How it works
+## Quick Start
 
 ```
 You: "Add 2 years at Google doing Kubernetes stuff"
      ↓
-AI generates LaTeX patch → compiles PDF → commits to GitHub
+AI generates LaTeX patch → compiles PDF → you preview it
      ↓
-You get a preview, accept or reject
+Accept → auto-commits to GitHub
 ```
 
-The backend only runs when you're actively using it. Otherwise, it's completely off.
+The backend spins up when you need it, shuts down after 10 minutes of inactivity. No always-on servers burning money.
 
-## Architecture
+## What's Inside
 
-Everything runs in a single Docker container on ECS Fargate Spot:
-- **Bun backend** - handles API requests, serves the frontend
-- **Next.js frontend** - static export, bundled into the container
-- **TeX Live** - compiles LaTeX to PDF (pdflatex + latexmk)
-- **Cloudflare Tunnel** - exposes the service without a load balancer
+Everything runs in one Docker container on ECS Fargate Spot:
+- **Bun** - handles API requests, serves the frontend
+- **Next.js** - static export, bundled into the container  
+- **TeX Live** - pdflatex + latexmk for compilation
+- **Cloudflare Tunnel** - exposes the service without paying for a load balancer
 
 ### Why Fargate Spot?
 
-Lambda would've been the obvious choice, but TeX Live is huge. Cramming it into a Lambda layer is painful. With Docker, I just `apt-get install` what I need.
+Lambda would've been the obvious choice, but TeX Live is huge (~2GB). Fitting it into a Lambda layer is a pain. With Docker I just `apt-get install` what I need and move on.
 
-Fargate Spot is ~70% cheaper than regular Fargate. Since the service only runs for a few minutes at a time, Spot interruptions don't matter.
+Fargate Spot is ~70% cheaper than regular Fargate. I only run for a few minutes at a time, so Spot interruptions are a non-issue.
 
 ### Why Bedrock?
 
-No API keys to manage. Bedrock runs inside my VPC, auth is handled by IAM. Qwen 3 on Bedrock is pay-per-token, way cheaper than a ChatGPT subscription for occasional use.
+No API keys to rotate. Bedrock runs in my VPC, auth is handled by IAM. Qwen on Bedrock is pay-per-token - way cheaper than a ChatGPT subscription for occasional resume tweaks.
 
-### Wake-on-Demand
+### Wake-on-Demand Flow
 
 1. **Idle** - Nothing running. Cost: $0
-2. **You visit the site** - Lambda wakes up the backend (~45-60s cold start)
-3. **You edit your resume** - Backend is live
-4. **10 min of inactivity** - Backend kills itself. Back to $0
+2. **You visit the site** - Lambda wakes up ECS (~45-60s cold start)
+3. **You edit** - Backend is live
+4. **10 min idle** - Container kills itself. Back to $0
 
-SOCI lazy-loading is enabled, so container startup is faster than pulling the full image.
+## Budget Kill Switch
+
+There's a failsafe: if AWS costs hit 80% of your monthly budget ($4 out of $5 by default), a Lambda automatically:
+1. Stops all ECS tasks
+2. Disables the wakeup Lambda (sets concurrency to 0)
+
+This prevents runaway costs. To re-enable, just reset the Lambda concurrency in the AWS console.
 
 ## Setup
 
-### Prerequisites
+### You'll Need
 - AWS account with admin access
-- Cloudflare account (for the tunnel)
-- Terraform installed locally
+- Cloudflare account (free tier works)
+- Terraform installed
 
 ### Deploy
 
-1. Clone/fork this repo
+1. Fork/clone this repo
 
-2. Set up GitHub secrets:
+2. Add GitHub secrets:
    - `AWS_ACCESS_KEY_ID`
    - `AWS_SECRET_ACCESS_KEY`
 
@@ -66,7 +72,7 @@ SOCI lazy-loading is enabled, so container startup is faster than pulling the fu
    ```bash
    cd terraform
    cp terraform.tfvars.example terraform.tfvars
-   # edit terraform.tfvars with your values
+   # edit with your values
    ```
 
 4. Deploy:
@@ -75,35 +81,36 @@ SOCI lazy-loading is enabled, so container startup is faster than pulling the fu
    terraform apply
    ```
 
-5. The workflow triggers on push to `main`. Your image builds, pushes to ECR, and the SOCI index gets created.
+5. Push to `main` - GitHub Actions builds the image, pushes to ECR
 
-### Environment Variables (terraform.tfvars)
+### terraform.tfvars
 
 ```hcl
-github_token            = "ghp_..."  # for committing resume changes
+github_token            = "ghp_..."           # for committing resume changes
 repo_owner              = "your-username"
 repo_name               = "your-repo"
-cloudflare_tunnel_token = "eyJ..."  # from cloudflare zero trust dashboard
+cloudflare_tunnel_token = "eyJ..."            # from Cloudflare Zero Trust
+budget_alert_email      = "you@example.com"   # budget notification email
 ```
 
-## Usage
+## Using It
 
-1. Go to your Cloudflare tunnel URL
-2. Site says "Backend Sleeping" - click Wake Up
-3. Wait ~60s for Fargate to spin up
-4. Type something like "Add experience at Google, 2 years, Kubernetes and GKE"
-5. AI generates the LaTeX, compiles, shows you the PDF
-6. Accept it → commits to GitHub automatically
+1. Run `npx latex-resume-cli` (or go to your Cloudflare tunnel URL)
+2. Wait ~60s for Fargate to spin up
+3. Type what you want changed
+4. Preview the PDF
+5. Accept → commits to GitHub
 
-## Project Structure
+## Project Layout
 
 ```
-├── compute/          # Bun backend (API + serves static files)
-├── web/              # Next.js frontend (builds to static)
-├── terraform/        # Infrastructure as code
-├── lambda_src/       # Wake/stop Lambdas
-├── resume.tex        # Your actual resume
-└── Dockerfile        # Everything bundled together
+├── compute/          # Bun backend
+├── web/              # Next.js frontend (static export)
+├── terraform/        # All the infrastructure
+├── lambda_src/       # Wake up, stop, and budget kill Lambdas
+├── cli/              # The npx command
+├── resume.tex        # Your resume
+└── Dockerfile        # Everything bundled
 ```
 
 ---

@@ -146,6 +146,79 @@ async function wakeAndOpen() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 📖 How It Works - Architecture Explanation
+// ═══════════════════════════════════════════════════════════════════════════════
+function showHowItWorks() {
+    console.clear();
+    console.log(`
+${c.cyan}${c.bold}┌─────────────────────────────────────────────────────────────────────────┐${c.reset}
+${c.cyan}${c.bold}│                     HOW THE RESUME EDITOR WORKS                         │${c.reset}
+${c.cyan}${c.bold}└─────────────────────────────────────────────────────────────────────────┘${c.reset}
+
+${c.yellow}THE PROBLEM:${c.reset}
+  Tailoring a resume for each job is tedious. LaTeX is powerful but fiddly.
+  I wanted to just say "add 2 years at Google doing Kubernetes" and have it done.
+
+${c.yellow}THE SOLUTION:${c.reset}
+  An AI that understands LaTeX, running on AWS, that only costs money when used.
+
+${c.bold}ARCHITECTURE:${c.reset}
+
+  ${c.dim}┌──────────────┐${c.reset}              ${c.dim}┌──────────────┐${c.reset}              ${c.dim}┌──────────────┐${c.reset}
+  ${c.dim}│${c.reset}  ${c.white}You (CLI)${c.reset}   ${c.dim}│${c.reset}   ${c.cyan}──────▶${c.reset}   ${c.dim}│${c.reset}    ${c.green}Lambda${c.reset}    ${c.dim}│${c.reset}   ${c.cyan}──────▶${c.reset}   ${c.dim}│${c.reset}  ${c.magenta}ECS Fargate${c.reset} ${c.dim}│${c.reset}
+  ${c.dim}│${c.reset}  npx command  ${c.dim}│${c.reset}    wake up   ${c.dim}│${c.reset}  (wake/stop)  ${c.dim}│${c.reset}   starts     ${c.dim}│${c.reset}   container  ${c.dim}│${c.reset}
+  ${c.dim}└──────────────┘${c.reset}              ${c.dim}└──────────────┘${c.reset}              ${c.dim}└──────────────┘${c.reset}
+                                                                     ${c.dim}│${c.reset}
+         ${c.dim}┌─────────────────────────────────────────────────────────┘${c.reset}
+         ${c.dim}▼${c.reset}
+  ${c.dim}┌──────────────────────────────────────────────────────────────────────┐${c.reset}
+  ${c.dim}│${c.reset}  ${c.bold}DOCKER CONTAINER (runs ~5-10 min per session)${c.reset}                        ${c.dim}│${c.reset}
+  ${c.dim}│${c.reset}                                                                        ${c.dim}│${c.reset}
+  ${c.dim}│${c.reset}    ${c.blue}Bun Backend${c.reset}  ───▶  ${c.yellow}Qwen AI (Bedrock)${c.reset}  ───▶  ${c.green}pdflatex${c.reset}              ${c.dim}│${c.reset}
+  ${c.dim}│${c.reset}    serves API         generates LaTeX        compiles PDF             ${c.dim}│${c.reset}
+  ${c.dim}│${c.reset}                                                    ${c.dim}│${c.reset}                   ${c.dim}│${c.reset}
+  ${c.dim}│${c.reset}    ${c.white}Next.js UI${c.reset}  ◀───  preview + accept/reject  ◀────┘                   ${c.dim}│${c.reset}
+  ${c.dim}│${c.reset}    (static files)           changes                                   ${c.dim}│${c.reset}
+  ${c.dim}│${c.reset}                                                                        ${c.dim}│${c.reset}
+  ${c.dim}│${c.reset}    ${c.magenta}Cloudflare Tunnel${c.reset}  ◀───  exposes to internet (no load balancer)    ${c.dim}│${c.reset}
+  ${c.dim}└──────────────────────────────────────────────────────────────────────┘${c.reset}
+                                     ${c.dim}│${c.reset}
+                                     ${c.dim}▼${c.reset}
+                          ${c.dim}┌──────────────────┐${c.reset}
+                          ${c.dim}│${c.reset}  ${c.green}GitHub Commit${c.reset}    ${c.dim}│${c.reset}
+                          ${c.dim}│${c.reset}  (auto-saves)     ${c.dim}│${c.reset}
+                          ${c.dim}└──────────────────┘${c.reset}
+
+${c.yellow}COST BREAKDOWN:${c.reset}
+  ${c.green}•${c.reset} When idle: ${c.bold}$0/hr${c.reset}  ${c.dim}(nothing running)${c.reset}
+  ${c.green}•${c.reset} When active: ${c.bold}~$0.01-0.02${c.reset}  ${c.dim}(Fargate Spot + Bedrock tokens)${c.reset}
+  ${c.green}•${c.reset} Budget kill switch: ${c.bold}auto-stops${c.reset} everything if you hit $5/month
+
+${c.yellow}THE FLOW:${c.reset}
+  ${c.white}1.${c.reset} You run ${c.cyan}npx latex-resume-cli${c.reset}
+  ${c.white}2.${c.reset} Lambda checks if ECS is running. If not, starts it ${c.dim}(~45-60s cold start)${c.reset}
+  ${c.white}3.${c.reset} Container boots: Bun server + TeX Live + Cloudflare tunnel
+  ${c.white}4.${c.reset} You type: "Add experience at Google, 2 years, Kubernetes"
+  ${c.white}5.${c.reset} AI generates a LaTeX patch, backend compiles to PDF
+  ${c.white}6.${c.reset} You see the preview. Accept = auto-commit to GitHub
+  ${c.white}7.${c.reset} After 10 min idle, container kills itself. Back to $0.
+
+${c.yellow}WHY THESE CHOICES:${c.reset}
+  ${c.green}•${c.reset} ${c.bold}Fargate Spot${c.reset} over Lambda: TeX Live is huge. Docker makes it easy.
+  ${c.green}•${c.reset} ${c.bold}Cloudflare Tunnel${c.reset} over ALB: No monthly load balancer cost.
+  ${c.green}•${c.reset} ${c.bold}Bedrock${c.reset} over OpenAI: No API keys. Pay-per-token. Runs in my VPC.
+  ${c.green}•${c.reset} ${c.bold}pdflatex${c.reset} over xelatex: Faster compilation. Good enough for most fonts.
+
+${c.dim}Press Enter to return to menu...${c.reset}`);
+
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    rl.question('', () => {
+        rl.close();
+        showMenu();
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // 📋 Interactive Menu
 // ═══════════════════════════════════════════════════════════════════════════════
 async function showMenu() {
@@ -155,7 +228,8 @@ async function showMenu() {
     console.log(`${c.bold}  What would you like to do?${c.reset}\n`);
     console.log(`  ${c.cyan}[1]${c.reset} ${c.white}View GitHub Repository${c.reset}`);
     console.log(`  ${c.cyan}[2]${c.reset} ${c.white}Launch AI Resume Editor (AWS ECS)${c.reset}`);
-    console.log(`  ${c.cyan}[3]${c.reset} ${c.dim}Exit${c.reset}`);
+    console.log(`  ${c.cyan}[3]${c.reset} ${c.white}How it Works${c.reset}`);
+    console.log(`  ${c.cyan}[4]${c.reset} ${c.dim}Exit${c.reset}`);
     console.log();
 
     const rl = readline.createInterface({
@@ -163,7 +237,7 @@ async function showMenu() {
         output: process.stdout
     });
 
-    rl.question(`${c.yellow}  --> Enter choice [1-3]: ${c.reset}`, async (answer) => {
+    rl.question(`${c.yellow}  --> Enter choice [1-4]: ${c.reset}`, async (answer) => {
         rl.close();
 
         switch (answer.trim()) {
@@ -178,6 +252,10 @@ async function showMenu() {
                 break;
 
             case '3':
+                showHowItWorks();
+                break;
+
+            case '4':
                 console.log(`\n${c.magenta}Thanks for visiting! See you around.${c.reset}\n`);
                 break;
 
