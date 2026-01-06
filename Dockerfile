@@ -6,11 +6,11 @@ FROM node:20-slim AS frontend
 WORKDIR /frontend
 
 # Install dependencies first (better caching)
-COPY web/package.json ./
-RUN npm install
+COPY web/package.json web/package-lock.json* ./
+RUN npm ci || npm install
 
 # Copy source and build
-COPY web/ .
+COPY web/ ./
 
 # Build static export
 RUN npm run build
@@ -58,8 +58,8 @@ COPY resume.tex .
 # Copy built frontend (static files)
 COPY --from=frontend /frontend/out ./public
 
-# Pre-compile resume (with verbose output for debugging)
-RUN pdflatex -interaction=nonstopmode resume.tex || (echo "=== LATEX ERROR LOG ===" && grep -A 10 "^!" resume.log && exit 1)
+# Skip pre-compilation - compile at runtime on first request
+# This avoids build failures and keeps the image smaller
 
 # Initialize git repo (required for commit functionality)
 RUN git init && \
