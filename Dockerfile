@@ -59,7 +59,7 @@ COPY resume.tex .
 COPY --from=frontend /frontend/out ./public
 
 # Pre-compile resume (with verbose output for debugging)
-RUN pdflatex -interaction=nonstopmode resume.tex || (cat resume.log && exit 1)
+RUN pdflatex -interaction=nonstopmode resume.tex || (echo "=== LATEX ERROR LOG ===" && grep -A 10 "^!" resume.log && exit 1)
 
 # Initialize git repo (required for commit functionality)
 RUN git init && \
