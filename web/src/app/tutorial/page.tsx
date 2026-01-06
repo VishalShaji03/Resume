@@ -92,11 +92,11 @@ const PDFLATEX_TIPS = [
         ],
     },
     {
-        title: 'Not Supported (pdflatex limits)',
+        title: 'pdflatex Limits',
         items: [
-            'Custom system fonts (use newtx instead)',
-            'Unicode emoji',
-            'fontspec package (xelatex only)',
+            'No custom system fonts (use newtx instead)',
+            'Limited Unicode support',
+            'Use fontenc for encoding',
         ],
     },
 ];
@@ -195,8 +195,8 @@ ${selectedCode}
                                         key={i}
                                         onClick={() => setSelectedCode(ex.code)}
                                         className={`px-3 py-1.5 text-sm rounded transition ${selectedCode === ex.code
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                                             }`}
                                     >
                                         {ex.title}

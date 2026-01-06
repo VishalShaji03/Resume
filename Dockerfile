@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     git \
-    # TeX Live minimal + latexmk
+    # TeX Live for pdflatex
     texlive-latex-base \
     texlive-latex-recommended \
     texlive-fonts-recommended \
@@ -36,7 +36,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     texlive-pictures \
     latexmk \
     lmodern \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && updmap-sys
 
 # Install cloudflared
 RUN curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
@@ -57,7 +58,7 @@ COPY resume.tex .
 # Copy built frontend (static files)
 COPY --from=frontend /frontend/out ./public
 
-# Pre-compile resume to cache format files
+# Pre-compile resume to cache format files (pdflatex is faster)
 RUN latexmk -pdf -interaction=nonstopmode resume.tex && latexmk -c
 
 # Copy entrypoint script
