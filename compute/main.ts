@@ -192,13 +192,14 @@ new Elysia()
         });
     })
 
-    .post("/commit", async ({ body }: any) => {
+    .post("/commit", async ({ body, set }: any) => {
         const msg = body.message || "Manual Commit";
         try {
             await commitToGit(msg);
             return { status: "success", message: "Changes pushed to GitHub" };
-        } catch (e) {
-            return { status: "error", error: String(e) };
+        } catch (e: any) {
+            set.status = 500;
+            return { status: "error", error: e.message || String(e) };
         }
     })
 
