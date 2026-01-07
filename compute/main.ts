@@ -172,14 +172,32 @@ new Elysia()
 
     .get("/resume", async () => await Bun.file("resume.tex").text())
 
-    .get("/pdf", async () => {
+    .get("/pdf", async ({ set }) => {
         const file = Bun.file("resume.pdf");
         if (await file.exists()) {
             return new Response(file, {
                 headers: { 'Content-Type': 'application/pdf' }
             });
         }
-        return { error: "PDF not found" };
+
+        // PDF doesn't exist - compile it now
+        console.log("[/pdf] PDF not found, compiling on-demand...");
+        const proc = Bun.spawn(["latexmk", "-xelatex", "-interaction=nonstopmode", "resume.tex"], {
+            stdout: "pipe",
+            stderr: "pipe",
+        });
+        await proc.exited;
+
+        const compiled = Bun.file("resume.pdf");
+        if (await compiled.exists()) {
+            console.log("[/pdf] On-demand compilation successful");
+            return new Response(compiled, {
+                headers: { 'Content-Type': 'application/pdf' }
+            });
+        }
+
+        set.status = 500;
+        return { error: "Compilation failed" };
     })
 
     .get("/download", async () => {

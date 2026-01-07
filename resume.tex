@@ -83,16 +83,16 @@
 
 \cventry
   {}
-  {Autonomous Resume Infrastructure}
+  {Serverless Resume Infrastructure}
   {AI-Latex-Editor}
   {\textit{\url{https://airesume-nine.vercel.app}}}
   {}
   {
   \begin{itemize}\setlength{\itemsep}{2pt}
-    \item Engineered a ``Wake-on-Demand'' architecture using AWS Lambda and ECS Fargate Spot, eliminating 95\% of idle costs.
-    \item Built a self-healing DevOps pipeline with Terraform to automate ECS provisioning and ECR lifecycle policies.
-    \item Integrated Amazon Bedrock for autonomous LaTeX patching with strict daily budget enforcement via custom middleware.
-    \item Orchestrated dual-deployment on Vercel (Frontend) and AWS ECS (Backend) for sub-second cold starts.
+    \item Provisioned full AWS infrastructure using Terraform IaC: ECS Fargate Spot, Lambda, SNS, IAM roles, and Cloudflare Tunnel ingress---achieving \$0/hr idle cost.
+    \item Implemented a Budget Kill Switch (SNS + Lambda) to auto-disable ECS and throttle Lambda when AWS spend exceeds thresholds.
+    \item Built an npx CLI tool with real-time ECS status polling and ASCII architecture diagrams for instant backend wake-up.
+    \item Integrated Amazon Bedrock (Qwen) for AI-driven LaTeX patching with xelatex compilation and auto-commit to GitHub.
   \end{itemize}
   }
 
