@@ -102,7 +102,7 @@ async function initRepo() {
     }
 }
 
-async function commitToGit(msg: string) {
+async function commitToGit(msg: string): Promise<{ pushed: boolean; message: string }> {
     console.log("[Git] Starting commit...");
 
     // Stage changes
@@ -116,7 +116,7 @@ async function commitToGit(msg: string) {
 
     if (!statusOutput.trim()) {
         console.log("[Git] No changes to commit");
-        return; // Nothing to commit, that's OK
+        return { pushed: false, message: "No changes to commit" };
     }
 
     // Commit
@@ -138,6 +138,7 @@ async function commitToGit(msg: string) {
     }
 
     console.log("[Git] Successfully pushed to GitHub");
+    return { pushed: true, message: "Changes pushed to GitHub" };
 }
 
 /**
@@ -226,8 +227,8 @@ new Elysia()
     .post("/commit", async ({ body, set }: any) => {
         const msg = body.message || "Manual Commit";
         try {
-            await commitToGit(msg);
-            return { status: "success", message: "Changes pushed to GitHub" };
+            const result = await commitToGit(msg);
+            return { status: "success", pushed: result.pushed, message: result.message };
         } catch (e: any) {
             set.status = 500;
             return { status: "error", error: e.message || String(e) };

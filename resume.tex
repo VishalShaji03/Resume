@@ -85,13 +85,13 @@
   {}
   {Serverless Resume Infrastructure}
   {AI-Latex-Editor}
-  {\textit{\url{https://airesume-nine.vercel.app}}}
+  {\textit{\url{https://github.com/Vishhh03/Latex-Resume}}}
   {}
   {
   \begin{itemize}\setlength{\itemsep}{2pt}
-    \item Provisioned full AWS infrastructure using Terraform IaC: ECS Fargate Spot, Lambda, SNS, IAM roles, and Cloudflare Tunnel ingress---achieving \$0/hr idle cost.
-    \item Implemented a Budget Kill Switch (SNS + Lambda) to auto-disable ECS and throttle Lambda when AWS spend exceeds thresholds.
-    \item Built an npx CLI tool with real-time ECS status polling and ASCII architecture diagrams for instant backend wake-up.
+    \item Provisioned AWS infrastructure via Terraform IaC (ECS Fargate Spot, Lambda, SNS, IAM), reducing monthly cost from \$50+ (always-on EC2) to under \$1.
+    \item Engineered wake-on-demand architecture with 60s cold start and auto-shutdown after 10min idle, cutting compute hours by 95\%.
+    \item Implemented Budget Kill Switch (SNS + Lambda) to auto-disable infrastructure when spend exceeds \$5/month threshold.
     \item Integrated Amazon Bedrock (Qwen) for AI-driven LaTeX patching with xelatex compilation and auto-commit to GitHub.
   \end{itemize}
   }
