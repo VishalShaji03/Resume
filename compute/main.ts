@@ -311,15 +311,11 @@ new Elysia()
         let resBody;
         try {
             // Bedrock Invoke - Qwen uses OpenAI-compatible messages format
-            const response = await bedrock.send(new InvokeModelCommand({
-                modelId: "qwen.qwen3-32b-v1:0",
-                contentType: "application/json",
-                accept: "application/json",
-                body: JSON.stringify({
-                    messages: [
-                        {
-                            role: "system",
-                            content: `You are a LaTeX resume editor. Generate JSON patches to modify the resume.
+            const payload = JSON.stringify({
+                messages: [
+                    {
+                        role: "system",
+                        content: `You are a LaTeX resume editor. Generate JSON patches to modify the resume.
 
 CRITICAL RULES:
 1. Return ONLY raw JSON - no markdown, no explanation, no code blocks
@@ -328,15 +324,21 @@ CRITICAL RULES:
 4. Use \\textbf{} for bold, \\textit{} for italic, \\url{} for links
 5. Keep the same document structure (\\cventry, \\cvitem, \\begin{itemize}...)
 6. Never add packages or change preamble unless specifically asked`
-                        },
-                        {
-                            role: "user",
-                            content: `Current LaTeX:\n\`\`\`\n${tex}\n\`\`\`\n\nInstruction: ${body.instruction}\nJob Context: ${body.job_description || "N/A"}\n\nRespond with: { "patches": [{ "search": "exact existing text", "replace": "new text" }] }`
-                        }
-                    ],
-                    max_tokens: 4096,
-                    temperature: 0.1
-                })
+                    },
+                    {
+                        role: "user",
+                        content: `Current LaTeX:\n\`\`\`\n${tex}\n\`\`\`\n\nInstruction: ${body.instruction}\nJob Context: ${body.job_description || "N/A"}\n\nRespond with: { "patches": [{ "search": "exact existing text", "replace": "new text" }] }`
+                    }
+                ],
+                max_tokens: 4096,
+                temperature: 0.1
+            });
+
+            const response = await bedrock.send(new InvokeModelCommand({
+                modelId: "qwen.qwen3-32b-v1:0",
+                contentType: "application/json",
+                accept: "application/json",
+                body: new TextEncoder().encode(payload)
             }));
 
             // Cost Accounting (placeholder - actual token counts from response if available)
